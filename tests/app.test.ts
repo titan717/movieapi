@@ -48,7 +48,7 @@ const show = {
   updated: 1
 };
 
-describe("MovieApi Phase 3", () => {
+describe("MovieApi Phase 5", () => {
   it("returns health with provider configuration state", async () => {
     const response = await createApp(base).request("/api/v1/health");
     expect(response.status).toBe(200);
@@ -61,11 +61,11 @@ describe("MovieApi Phase 3", () => {
     expect(response.headers.get("x-request-id")).toBeTruthy();
   });
 
-  it("returns Phase 3 version", async () => {
+  it("returns current version", async () => {
     const response = await createApp(base).request("/api/v1/version");
     const body = await response.json();
     expect(body.data.version).toBe("0.4.0");
-    expect(body.data.phase).toBe(4);
+    expect(body.data.phase).toBe(5);
   });
 
   it("serves docs and OpenAPI", async () => {
