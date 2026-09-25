@@ -2,22 +2,20 @@
 
 ## 2026-09-25
 
-### Phase 1
-- Added TypeScript/Hono API foundation.
-- Added /api/v1/health and /api/v1/version.
-- Added root Hono Vercel entrypoint.
-- Added request IDs.
-- Added CORS.
-- Added API-key authentication foundation.
-- Added bounded per-instance rate limiting.
-- Added standardized errors and 404 handling.
-- Added structured JSON logging.
-- Added runtime configuration validation.
-- Added executable Vitest tests.
-- Added /docs and /openapi.yaml endpoints.
-- Synchronized OpenAPI with implemented Phase 1 routes.
-- Fixed CI so it does not depend on a missing npm lockfile.
-- Corrected the Vercel entrypoint after deployment verification exposed an output-directory failure.
+### Phase 2 — TVmaze provider
+- Added schema-validated TVmaze client.
+- Added TV show search and normalization.
+- Added show metadata, seasons, episodes, season/episode lookup, and images.
+- Added country/date airing endpoints.
+- Added TVmaze timeout and provider error mapping.
+- Added TVmaze configuration and descriptive User-Agent support.
+- Added Phase 2 route tests with mocked provider responses.
+- Added TVmaze attribution/licensing documentation.
+- Kept cast and crew outside the MovieApi public contract.
+- Updated service/package version to 0.2.0.
 
-### Verification note
-The implementation has been inspected through the repository files. Local execution is unavailable in the current environment because outbound GitHub access is blocked, so local `npm run check` has not been claimed as executed.
+### Phase 1 verification fixes
+- Corrected the Vercel Hono entrypoint to the root `index.ts`.
+- Removed the redundant `api/index.ts`.
+- Made CI independent of a missing npm lockfile.
+- Corrected deployment documentation.
