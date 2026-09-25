@@ -7,29 +7,30 @@
 - GET /docs
 - GET /openapi.yaml
 
-## Phase 2 — TVmaze provider
-
-### Search
+## Phase 2 — TVmaze primary provider
 
 - GET /api/v1/search?q=...
 - GET /api/v1/tv/search?q=...
-
-TVmaze search results are fuzzy and are paginated locally after the provider response. TVmaze documents its public search as fuzzy and relevance ordered.
-
-### TV show
-
 - GET /api/v1/tv/:id
 - GET /api/v1/tv/:id/seasons
 - GET /api/v1/tv/:id/episodes
 - GET /api/v1/tv/:id/season/:season
 - GET /api/v1/tv/:id/season/:season/episode/:episode
 - GET /api/v1/tv/:id/images
-
-### Airing
-
 - GET /api/v1/airing?country=US&date=YYYY-MM-DD
 - GET /api/v1/airing/today
 - GET /api/v1/airing/date/:date
+
+## Phase 3 — TMDB fallback/enrichment
+
+- GET /api/v1/tmdb/tv/:id
+- GET /api/v1/tmdb/movie/:id
+- GET /api/v1/tmdb/search/tv?q=...
+- GET /api/v1/tmdb/search/movie?q=...
+
+TV detail requests remain TVmaze-first. When TMDB is configured and required normalized fields are missing, MovieApi attempts an identity match and fills only missing fields. Valid TVmaze fields are retained.
+
+TMDB also provides the movie metadata foundation because TVmaze is not the movie metadata source.
 
 ## Middleware
 
@@ -41,8 +42,4 @@ TVmaze search results are fuzzy and are paginated locally after the provider res
 - Structured JSON logging
 - Runtime environment validation
 
-## Provider boundary
-
-TVmaze responses are schema-validated and normalized before reaching Kinoma. Cast and crew are intentionally excluded from the public MovieApi contract.
-
-Caching, retries, circuit breakers, TMDB fallback, discovery aggregation, trailers, and playback are implemented in later phases.
+Caching, retries, circuit breakers, discovery aggregation, trailers, and playback are implemented in later phases.
