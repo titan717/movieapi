@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: MovieApi
-  version: 0.3.0
-  description: Kinoma media API with TVmaze primary metadata and TMDB fallback/enrichment.
+  version: 0.4.0
+  description: Kinoma media API with TVmaze primary metadata, TMDB fallback, and provider reliability controls.
 servers:
   - url: /api/v1
 paths:
