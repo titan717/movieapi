@@ -1,0 +1,49 @@
+openapi: 3.1.0
+info:
+  title: MovieApi
+  version: 0.1.0
+  description: Normalized media metadata and playback service for Kinoma.
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      summary: API health
+      operationId: getHealth
+      responses:
+        "200":
+          description: Health response
+  /version:
+    get:
+      summary: API version
+      operationId: getVersion
+      responses:
+        "200":
+          description: Version response
+components:
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data: {}
+    ErrorEnvelope:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string
