@@ -63,7 +63,13 @@ export class TvmazeClient {
         throw new TvmazeProviderError(`TVmaze returned HTTP ${response.status}.`, "HTTP_ERROR", response.status);
       }
 
-      const payload: unknown = await response.json();
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new TvmazeProviderError("TVmaze returned invalid JSON.", "INVALID_RESPONSE", 502);
+      }
+
       const parsed = schema.safeParse(payload);
       if (!parsed.success) {
         throw new TvmazeProviderError("TVmaze returned an invalid response.", "INVALID_RESPONSE", 502);
