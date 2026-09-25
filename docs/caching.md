@@ -1,5 +1,8 @@
 # Caching
 
+Phase 4 implements an in-memory bounded cache per application instance. Cached provider responses are schema-validated before storage. Fresh entries are served normally; stale entries are returned immediately while one background refresh is deduplicated per key.
+
+
 Caching is data-type specific.
 
 | Data | Intended TTL |
