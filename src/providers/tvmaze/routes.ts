@@ -23,7 +23,8 @@ function handleProviderError(c: Context<AppEnv>, error: unknown) {
     RATE_LIMIT: ["PROVIDER_RATE_LIMITED", "TVmaze rate limited the request.", 429],
     HTTP_ERROR: ["PROVIDER_UNAVAILABLE", "TVmaze is currently unavailable.", 502],
     INVALID_RESPONSE: ["PROVIDER_INVALID_RESPONSE", "TVmaze returned an invalid response.", 502],
-    NOT_FOUND: ["MEDIA_NOT_FOUND", "The requested TV content was not found.", 404]
+    NOT_FOUND: ["MEDIA_NOT_FOUND", "The requested TV content was not found.", 404],
+    CIRCUIT_OPEN: ["PROVIDER_UNAVAILABLE", "TVmaze is temporarily unavailable.", 503]
   } as const;
   const [code, message, status] = map[error.kind];
   return errorResponse(c, code, message, status, c.get("requestId"));
