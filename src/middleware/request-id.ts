@@ -1,6 +1,8 @@
 import { createMiddleware } from "hono/factory";
 
-export const requestId = createMiddleware(async (c, next) => {
+type Variables = { requestId: string };
+
+export const requestId = createMiddleware<{ Variables: Variables }>(async (c, next) => {
   const incoming = c.req.header("x-request-id")?.trim();
   const id = incoming || crypto.randomUUID();
   c.set("requestId", id);
