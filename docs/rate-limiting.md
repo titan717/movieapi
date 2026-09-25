@@ -1,9 +1,12 @@
 # Rate Limiting
 
-MovieApi will enforce rate limits at its public boundary.
+Phase 1 implements a bounded in-memory rate limiter.
 
-Provider-specific limits are separate from MovieApi limits.
+Defaults:
 
-The service must not amplify provider load through uncontrolled frontend retries.
+- 120 requests per 60 seconds
+- keyed by the first X-Forwarded-For address
 
-429 responses from upstream providers are handled through bounded backoff, circuit-breaking, and fallback logic where appropriate.
+When exceeded, MovieApi returns HTTP 429 with Retry-After.
+
+This limiter is intentionally a foundation. Before high-volume multi-instance production traffic, replace it with a shared distributed limiter so limits are consistent across instances.
