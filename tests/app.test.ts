@@ -64,7 +64,7 @@ describe("MovieApi Phase 5", () => {
   it("returns current version", async () => {
     const response = await createApp(base).request("/api/v1/version");
     const body = await response.json();
-    expect(body.data.version).toBe("0.4.0");
+    expect(body.data.version).toBe("0.5.0");
     expect(body.data.phase).toBe(5);
   });
 
