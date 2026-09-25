@@ -54,6 +54,7 @@ A phase is not considered complete until its implementation, tests, documentatio
 - API Overview: docs/api-overview.md
 - Providers: docs/providers/overview.md
 - Metadata: docs/metadata/movies.md
+- TV Metadata: docs/metadata/tv.md
 - Search: docs/search.md
 - Discovery: docs/discovery.md
 - Trailers: docs/trailers.md
