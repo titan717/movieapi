@@ -4,37 +4,52 @@ MovieApi is the backend service layer for Kinoma, providing a stable, normalized
 
 ## Status
 
-**Phase 0 — Architecture & Documentation complete.**
+**Phase 1 — API Foundation implemented.**
 
-No provider implementation has been added yet. Phase 1 will establish the runnable API foundation.
+The foundation includes request tracing, CORS, API-key authentication, rate limiting, standardized errors, health/version endpoints, tests, and live documentation.
+
+## Quick start
+
+    npm install
+    npm run dev
+
+Then visit:
+
+- http://localhost:3000/api/v1/health
+- http://localhost:3000/api/v1/version
+- http://localhost:3000/docs
+- http://localhost:3000/openapi.yaml
+
+Run verification:
+
+    npm run check
 
 ## Architecture
 
     Kinoma
-      ↓
+      |
+      v
     MovieApi API (/api/v1)
-      ↓
+      |
+      v
     Service Layer
-      ├── Metadata → TVmaze primary → TMDB fallback
-      ├── Search
-      ├── Discovery
-      ├── Trailers
-      └── Playback → VidSrc provider
-      ↓
+      +-- Metadata -> TVmaze primary -> TMDB fallback
+      +-- Search
+      +-- Discovery
+      +-- Trailers
+      +-- Playback -> VidSrc provider
+      |
+      v
     Cache / Reliability / Health / Monitoring
 
 Kinoma consumes MovieApi's normalized schemas and does not depend directly on provider response formats.
 
-## Provider strategy
+## Phase discipline
 
-- **TVmaze:** primary metadata provider.
-- **TMDB:** fallback and field-level metadata enrichment.
-- **VidSrc:** separate playback provider.
-- Provider adapters remain replaceable so additional authorized providers can be added later.
+Every phase is implemented, tested, documented, and verified before the next phase begins. Documentation and OpenAPI are updated alongside implementation.
 
 ## Documentation
 
-- Getting Started: docs/getting-started.md
 - Architecture: docs/architecture.md
 - API Overview: docs/api-overview.md
 - Providers: docs/providers/overview.md
@@ -52,13 +67,16 @@ Kinoma consumes MovieApi's normalized schemas and does not depend directly on pr
 - Testing: docs/testing.md
 - Deployment: docs/deployment.md
 - Changelog: docs/changelog.md
+- OpenAPI: openapi/openapi.yaml
 
-OpenAPI contract: openapi/openapi.yaml
+## Provider strategy
 
-## Phase rule
+- TVmaze: primary metadata provider.
+- TMDB: fallback and field-level metadata enrichment.
+- VidSrc: separate playback provider.
 
-Every phase is implemented, tested, documented, and verified before the next phase begins. Documentation and OpenAPI are updated alongside implementation rather than after it.
+Provider adapters remain replaceable so additional authorized providers can be added later.
 
-## Safety and provider boundaries
+## Safety boundary
 
 MovieApi will use documented or authorized provider interfaces where available. It will not bypass DRM, authentication, CAPTCHA, access controls, protected keys, or other technical restrictions.
