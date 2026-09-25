@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CircuitBreaker, MemoryCache, ProviderHealth, isRetryableProviderError, withRetry } from "../../reliability.js";
 import {
   episodeSchema,
   scheduleEpisodeSchema,
@@ -21,7 +22,7 @@ export type TvmazeClientOptions = {
 export class TvmazeProviderError extends Error {
   constructor(
     message: string,
-    public readonly kind: "TIMEOUT" | "RATE_LIMIT" | "HTTP_ERROR" | "INVALID_RESPONSE" | "NOT_FOUND",
+    public readonly kind: "TIMEOUT" | "RATE_LIMIT" | "HTTP_ERROR" | "INVALID_RESPONSE" | "NOT_FOUND" | "CIRCUIT_OPEN",
     public readonly status?: number
   ) {
     super(message);
@@ -33,6 +34,9 @@ export class TvmazeClient {
   private readonly baseUrl: string;
   private readonly userAgent: string;
   private readonly timeoutMs: number;
+  private readonly cache = new MemoryCache<unknown>(1500);
+  private readonly breaker = new CircuitBreaker();
+  private readonly health = new ProviderHealth();
 
   constructor(options: TvmazeClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? TVMAZE_BASE_URL).replace(/\/$/, "");
@@ -40,7 +44,7 @@ export class TvmazeClient {
     this.timeoutMs = options.timeoutMs ?? 8_000;
   }
 
-  private async get<T>(path: string, schema: z.ZodType<T>): Promise<T> {
+  getHealth() { return { provider: "tvmaze", configured: true, ...this.health.snapshot(), circuit: this.breaker.snapshot(), cache: this.cache.stats() }; }\n\n  private async get<T>(path: string, schema: z.ZodType<T>, ttlMs = 300_000, staleTtlMs = 900_000): Promise<T> {\n    const cached = await this.cache.getOrSet(path, async () => {\n      if (!this.breaker.canRequest()) throw new TvmazeProviderError("TVmaze circuit is open.", "CIRCUIT_OPEN", 503);\n      const started = Date.now();\n      try {\n        const result = await withRetry(() => this.request(path, schema), { attempts: 3, baseDelayMs: 150, maxDelayMs: 1500, shouldRetry: isRetryableProviderError });\n        this.breaker.onSuccess();\n        this.health.recordSuccess(Date.now() - started);\n        return result;\n      } catch (error) {\n        this.breaker.onFailure();\n        this.health.recordFailure(Date.now() - started);\n        throw error;\n      }\n    }, ttlMs, staleTtlMs);\n    return cached.value as T;\n  }\n\n  private async request<T>(path: string, schema: z.ZodType<T>): Promise<T> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
@@ -90,23 +94,23 @@ export class TvmazeClient {
   }
 
   searchShows(query: string) {
-    return this.get(`/search/shows?q=${encodeURIComponent(query)}`, z.array(searchResultSchema));
+    return this.get(`/search/shows?q=${encodeURIComponent(query)}`, z.array(searchResultSchema), 60_000, 300_000);
   }
 
   getShow(id: number): Promise<TvmazeShow> {
-    return this.get(`/shows/${id}`, showSchema);
+    return this.get(`/shows/${id}`, showSchema, 600_000, 3_600_000);
   }
 
   getShowEpisodes(id: number, specials = false): Promise<TvmazeEpisode[]> {
-    return this.get(`/shows/${id}/episodes${specials ? "?specials=1" : ""}`, z.array(episodeSchema));
+    return this.get(`/shows/${id}/episodes${specials ? "?specials=1" : ""}`, z.array(episodeSchema), 600_000, 3_600_000);
   }
 
   getShowSeasons(id: number): Promise<TvmazeSeason[]> {
-    return this.get(`/shows/${id}/seasons`, z.array(seasonSchema));
+    return this.get(`/shows/${id}/seasons`, z.array(seasonSchema), 600_000, 3_600_000);
   }
 
   getSeasonEpisodes(seasonId: number): Promise<TvmazeEpisode[]> {
-    return this.get(`/seasons/${seasonId}/episodes`, z.array(episodeSchema));
+    return this.get(`/seasons/${seasonId}/episodes`, z.array(episodeSchema), 3_600_000, 86_400_000);
   }
 
   getEpisodeByNumber(showId: number, season: number, episode: number): Promise<TvmazeEpisode> {
@@ -137,6 +141,6 @@ export class TvmazeClient {
     if (country) params.set("country", country);
     if (date) params.set("date", date);
     const query = params.toString();
-    return this.get(`/schedule${query ? `?${query}` : ""}`, z.array(scheduleEpisodeSchema));
+    return this.get(`/schedule${query ? `?${query}` : ""}`, z.array(scheduleEpisodeSchema), 300_000, 900_000);
   }
 }
