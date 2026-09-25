@@ -22,7 +22,8 @@ Verification:
 
 The repository uses the Hono Vercel pattern with a root `index.ts` that default-exports the Hono application.
 
-The current Hono guidance documents this default-export pattern for Vercel deployments. urlHono Vercel deployment guidancehttps://hono.dev/docs/getting-started/vercel
+The current Hono guidance documents this default-export pattern for Vercel deployments:
+https://hono.dev/docs/getting-started/vercel
 
 Production secrets must be configured through the deployment platform's environment variables.
 
