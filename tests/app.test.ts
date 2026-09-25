@@ -55,15 +55,17 @@ describe("MovieApi Phase 3", () => {
     const body = await response.json();
     expect(body.success).toBe(true);
     expect(body.data.status).toBe("healthy");
-    expect(body.data.providers.tmdb).toBe("configured");
+    expect(body.data.providers.tmdb.configured).toBe(true);
+    expect(body.data.providers.tmdb.circuit.state).toBe("closed");
+    expect(body.data.providers.tvmaze.provider).toBe("tvmaze");
     expect(response.headers.get("x-request-id")).toBeTruthy();
   });
 
   it("returns Phase 3 version", async () => {
     const response = await createApp(base).request("/api/v1/version");
     const body = await response.json();
-    expect(body.data.version).toBe("0.3.0");
-    expect(body.data.phase).toBe(3);
+    expect(body.data.version).toBe("0.4.0");
+    expect(body.data.phase).toBe(4);
   });
 
   it("serves docs and OpenAPI", async () => {
@@ -172,6 +174,18 @@ describe("MovieApi Phase 3", () => {
     const body = await response.json();
     expect(response.status).toBe(502);
     expect(body.error.code).toBe("PROVIDER_INVALID_RESPONSE");
+  });
+
+  it("caches repeated TVmaze detail requests", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      calls += 1;
+      return new Response(JSON.stringify(show), { status: 200, headers: { "content-type": "application/json" } });
+    }));
+    const app = createApp({ ...base, tmdb: { ...base.tmdb, accessToken: undefined } });
+    expect((await app.request("/api/v1/tv/1")).status).toBe(200);
+    expect((await app.request("/api/v1/tv/1")).status).toBe(200);
+    expect(calls).toBe(1);
   });
 
   it("serves a normalized TMDB movie", async () => {
