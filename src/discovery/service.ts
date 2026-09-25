@@ -199,16 +199,15 @@ export class DiscoveryService {
 
   recommendations(type: "movie" | "tv", id: number, page = 1) {
     return this.cached(`recommendations:${type}:${id}:${page}`, async () => {
-      const result = type === "movie"
-        ? await this.tmdb.movieRecommendations(id, page)
-        : await this.tmdb.tvRecommendations(id, page);
       if (type === "movie") {
+        const result = await this.tmdb.movieRecommendations(id, page);
         return {
           type, id, page: result.page ?? page, totalPages: result.total_pages ?? 0,
           totalResults: result.total_results ?? 0,
           results: result.results.map(normalizeTmdbMovieResult)
         };
       }
+      const result = await this.tmdb.tvRecommendations(id, page);
       return {
         type, id, page: result.page ?? page, totalPages: result.total_pages ?? 0,
         totalResults: result.total_results ?? 0,
