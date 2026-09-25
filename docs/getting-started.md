@@ -17,7 +17,7 @@ Phase 5 is the discovery/aggregation layer.
 - OpenAPI
 - Automated tests
 
-The concrete framework is selected during Phase 1.
+The concrete runtime is Node.js + TypeScript + Hono, with a Vercel-compatible Hono entrypoint.
 
 ## Development rule
 
