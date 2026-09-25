@@ -1,30 +1,7 @@
 # Movie Metadata
 
-## Normalized movie model
+Movie metadata is not implemented by Phase 2.
 
-```json
-{
-  "id": "kinoma_movie_...",
-  "type": "movie",
-  "title": "Example Movie",
-  "originalTitle": "Example Movie",
-  "year": 2026,
-  "rating": 7.8,
-  "quality": "HD",
-  "poster": "https://...",
-  "backdrop": "https://...",
-  "overview": "Example overview.",
-  "genres": [],
-  "runtime": 120,
-  "releaseDate": "2026-09-25",
-  "ids": {
-    "tvmaze": null,
-    "tmdb": 12345,
-    "imdb": "tt1234567"
-  }
-}
-```
+TVmaze is primarily a TV data provider; its public API is used here for TV shows, seasons, episodes, images, and schedules. Movie metadata will be introduced through the Phase 3 TMDB provider/fallback design.
 
-Fields are normalized and may be nullable when no trusted provider can supply them.
-
-No cast or crew fields are part of this contract.
+The normalized movie contract remains reserved for the future movie provider layer and must not be populated with fabricated TVmaze data.
