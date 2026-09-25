@@ -6,7 +6,8 @@ import { requestId } from "./middleware/request-id.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { rateLimitMiddleware } from "./middleware/rate-limit.js";
 import { log } from "./logger.js";
-import { TvmazeClient, createTvmazeRoutes, createTvmazeScheduleRoutes } from "./providers/tvmaze/index.js";
+import { TvmazeClient, TvmazeProviderError, createTvmazeRoutes, createTvmazeScheduleRoutes } from "./providers/tvmaze/index.js";
+import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -159,10 +160,7 @@ export function createApp(config: Config = loadConfig()) {
           query: q,
           results: matches.slice(start, start + limit).map((match) => ({
             score: match.score,
-            id: `kinoma_tvmaze_${match.show.id}`,
-            type: "tv",
-            title: match.show.name,
-            source: "tvmaze"
+            ...normalizeShow(match.show)
           })),
           pagination: {
             page,
@@ -173,8 +171,8 @@ export function createApp(config: Config = loadConfig()) {
         }
       });
     } catch (error) {
-      if (error instanceof Error && "kind" in error) {
-        const kind = (error as { kind: string }).kind;
+      if (error instanceof TvmazeProviderError) {
+        const kind = error.kind;
         const map: Record<string, [string, string, 400 | 429 | 502 | 504]> = {
           TIMEOUT: ["PROVIDER_TIMEOUT", "TVmaze did not respond in time.", 504],
           RATE_LIMIT: ["PROVIDER_RATE_LIMITED", "TVmaze rate limited the request.", 429],
