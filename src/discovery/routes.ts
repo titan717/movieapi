@@ -20,7 +20,7 @@ function providerError(c: Context<AppEnv>, error: unknown) {
   if (!tmdb && !tvmaze) return null;
   const kind = error.kind;
   const provider = tmdb ? "TMDB" : "TVmaze";
-  const map: Record<string, [string, string, 400 | 429 | 502 | 503 | 504]> = {
+  const map: Record<string, [string, string, 400 | 404 | 429 | 502 | 503 | 504]> = {
     UNCONFIGURED: ["PROVIDER_UNAVAILABLE", "TMDB is not configured.", 503],
     TIMEOUT: ["PROVIDER_TIMEOUT", `${provider} did not respond in time.`, 504],
     RATE_LIMIT: ["PROVIDER_RATE_LIMITED", `${provider} rate limited the request.`, 429],
