@@ -4,13 +4,13 @@
 
 ```json
 {
-  "id": "kinoma_tv_123:s01e03",
-  "showId": "kinoma_tv_123",
+  "id": "kinoma_tvmaze_episode_456",
+  "providerId": 456,
   "season": 1,
-  "episode": 3,
+  "number": 3,
   "title": "Episode Title",
   "overview": "Episode description.",
-  "airDate": "2026-09-25",
+  "airdate": "2026-09-25",
   "runtime": 48,
   "image": "https://...",
   "rating": 8.4
