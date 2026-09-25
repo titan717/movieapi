@@ -10,7 +10,7 @@ import { TvmazeClient, TvmazeProviderError, createTvmazeRoutes, createTvmazeSche
 import { TmdbClient, createTmdbRoutes } from "./providers/tmdb/index.js";
 import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
-import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
+import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";\nimport { VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -185,7 +185,7 @@ export function createApp(config: Config = loadConfig()) {
   const tvmaze = new TvmazeClient(config.tvmaze);
   const tmdb = new TmdbClient(config.tmdb);
   const discovery = new DiscoveryService(tmdb, tvmaze);
-  const tmdbVideos = new TmdbVideoClient(config.tmdb);
+  const tmdbVideos = new TmdbVideoClient(config.tmdb);\n  const playback = new VidSrcProvider(config.vidsrc);
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -198,7 +198,7 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/", (c) => c.json({
     success: true,
-    data: { name: "MovieApi", version: "0.5.0", status: "discovery" }
+    data: { name: "MovieApi", version: "0.7.0", status: "playback" }
   }));
 
   app.get("/api/v1/health", (c) => c.json({
@@ -208,20 +208,20 @@ export function createApp(config: Config = loadConfig()) {
       service: "movieapi",
       version: "0.5.0",
       timestamp: new Date().toISOString(),
-      providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth() }
+      providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth(), vidsrc: playback.getHealth() }
     }
   }));
 
   app.get("/api/v1/version", (c) => c.json({
     success: true,
-    data: { version: "0.5.0", apiVersion: "v1", phase: 5 }
+    data: { version: "0.7.0", apiVersion: "v1", phase: 7 }
   }));
 
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
-  app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
+  app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));\n  app.route("/api/v1", createPlaybackRoutes(playback));
 
   app.get("/api/v1/search", async (c) => {
     const q = c.req.query("q")?.trim();
@@ -268,7 +268,7 @@ export function createApp(config: Config = loadConfig()) {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MovieApi Docs</title>
 <style>body{font-family:system-ui,sans-serif;max-width:960px;margin:40px auto;padding:0 20px;line-height:1.6;color:#18202a}code,pre{background:#f4f5f7;border-radius:8px}code{padding:2px 5px}pre{padding:16px;overflow:auto}.route{border:1px solid #dfe3e8;border-radius:12px;padding:16px;margin:12px 0}a{color:#135cc8}</style>
-</head><body><h1>MovieApi</h1><p>Phase 5 discovery layer · v0.5.0</p>
+</head><body><h1>MovieApi</h1><p>Phase 7 playback layer · v0.7.0</p>
 <p><a href="/openapi.yaml">OpenAPI specification</a></p>
 <div class="route"><strong>GET /api/v1/search?q=...</strong><br>Search normalized TV results.</div>
 <div class="route"><strong>GET /api/v1/tv/:id</strong><br>Show metadata.</div>
@@ -281,7 +281,7 @@ export function createApp(config: Config = loadConfig()) {
 <div class="route"><strong>GET /api/v1/popular/movies</strong><br>Popular movies.</div>
 <div class="route"><strong>GET /api/v1/popular/tv</strong><br>Popular TV.</div>
 <div class="route"><strong>GET /api/v1/trending</strong><br>Trending movies and TV.</div>
-<div class="route"><strong>GET /api/v1/home</strong><br>Kinoma homepage discovery aggregation.</div>
+<div class="route"><strong>GET /api/v1/home</strong><br>Kinoma homepage discovery aggregation.</div>\n<div class="route"><strong>GET /api/v1/movie/:id/sources</strong><br>Movie playback sources.</div>\n<div class="route"><strong>GET /api/v1/movie/:id/play</strong><br>Primary movie playback source.</div>\n<div class="route"><strong>GET /api/v1/tv/:id/season/:season/episode/:episode/sources</strong><br>TV episode playback sources.</div>\n<div class="route"><strong>GET /api/v1/tv/:id/season/:season/episode/:episode/play</strong><br>Primary TV episode playback source.</div>
 <h2>Authentication</h2><p>When enabled, send <code>X-API-Key</code>.</p>
 <h2>Attribution</h2><p>TVmaze data is licensed under CC BY-SA. Kinoma must provide TVmaze attribution/link-back when using the public TVmaze API.</p>
 <h2>Success</h2><pre>{"success":true,"data":{}}</pre>
