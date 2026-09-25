@@ -1,68 +1,31 @@
 # API Overview
 
-## Versioning
+## Phase 1 — Implemented
 
-All public endpoints use `/api/v1`.
+### GET /api/v1/health
 
-Breaking changes require a new API version.
+Returns service health, service version, timestamp, and the request ID in the response header.
 
-## Response envelope
+### GET /api/v1/version
 
-Successful responses use:
+Returns MovieApi version, API version, and current phase.
 
-```json
-{
-  "success": true,
-  "data": {}
-}
-```
+### GET /docs
 
-Errors use:
+Human-readable Phase 1 documentation.
 
-```json
-{
-  "success": false,
-  "error": {
-    "code": "INVALID_REQUEST",
-    "message": "Invalid request parameters.",
-    "requestId": "req_..."
-  }
-}
-```
+### GET /openapi.yaml
 
-## Planned endpoint groups
+Machine-readable OpenAPI 3.1 contract.
 
-### Health
-- `GET /api/v1/health`
-- `GET /api/v1/version`
+## Middleware
 
-### Search
-- `GET /api/v1/search?q=`
+- Request IDs through X-Request-ID
+- CORS
+- API-key authentication foundation
+- Bounded per-instance rate limiting
+- Standardized JSON errors
+- Structured JSON logging
+- Runtime environment validation
 
-### Movies
-- `GET /api/v1/movie/:id`
-- `GET /api/v1/movie/:id/videos`
-- `GET /api/v1/movie/:id/recommendations`
-- `GET /api/v1/movie/:id/sources`
-- `GET /api/v1/movie/:id/play`
-
-### TV
-- `GET /api/v1/tv/:id`
-- `GET /api/v1/tv/:id/seasons`
-- `GET /api/v1/tv/:id/episodes`
-- `GET /api/v1/tv/:id/season/:season`
-- `GET /api/v1/tv/:id/season/:season/episode/:episode`
-- `GET /api/v1/tv/:id/season/:season/episode/:episode/play`
-
-### Discovery
-- popular
-- latest
-- upcoming
-- airing
-- trending
-- featured
-- genres
-- recommendations
-- home aggregation
-
-The endpoint list is a roadmap; an endpoint is not considered available until implemented and represented in OpenAPI.
+Provider and media endpoints are not available until their respective phases are implemented.
