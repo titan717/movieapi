@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CircuitBreaker, MemoryCache, ProviderHealth, isRetryableProviderError, withRetry } from "../../reliability.js";
 import {
   tmdbFindSchema,
   tmdbMovieDetailsSchema,
@@ -20,7 +21,7 @@ export type TmdbClientOptions = {
 export class TmdbProviderError extends Error {
   constructor(
     message: string,
-    public readonly kind: "UNCONFIGURED" | "TIMEOUT" | "RATE_LIMIT" | "HTTP_ERROR" | "INVALID_RESPONSE" | "NOT_FOUND" | "UNAUTHORIZED",
+    public readonly kind: "UNCONFIGURED" | "TIMEOUT" | "RATE_LIMIT" | "HTTP_ERROR" | "INVALID_RESPONSE" | "NOT_FOUND" | "UNAUTHORIZED" | "CIRCUIT_OPEN",
     public readonly status?: number
   ) {
     super(message);
@@ -32,6 +33,9 @@ export class TmdbClient {
   private readonly baseUrl: string;
   private readonly accessToken?: string;
   private readonly timeoutMs: number;
+  private readonly cache = new MemoryCache<unknown>(1000);
+  private readonly breaker = new CircuitBreaker();
+  private readonly health = new ProviderHealth();
 
   constructor(options: TmdbClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? TMDB_BASE_URL).replace(/\/$/, "");
@@ -115,11 +119,11 @@ export class TmdbClient {
   }
 
   getTv(id: number): Promise<TmdbTvDetails> {
-    return this.get(`/tv/${id}`, tmdbTvDetailsSchema);
+    return this.get(`/tv/${id}`, tmdbTvDetailsSchema, 600_000, 3_600_000);
   }
 
   getMovie(id: number): Promise<TmdbMovieDetails> {
-    return this.get(`/movie/${id}`, tmdbMovieDetailsSchema);
+    return this.get(`/movie/${id}`, tmdbMovieDetailsSchema, 600_000, 3_600_000);
   }
 
   findByExternalId(externalId: string, externalSource = "imdb_id") {
