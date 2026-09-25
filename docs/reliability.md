@@ -1,6 +1,6 @@
 # Reliability
 
-MovieApi is designed to tolerate provider failures.
+MovieApi is designed to tolerate provider failures. Phase 4 implements bounded retries, in-memory stale-while-revalidate caching, circuit breakers, and provider health snapshots.
 
 ## Retry
 
