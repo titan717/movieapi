@@ -1,4 +1,4 @@
-# Changelog
+# Changelog\n\n## 2026-09-25\n\n### Phase 7 — Playback\n- Added a provider-neutral playback source contract.\n- Added a documented VidSrc embed adapter using TMDB IDs.\n- Added movie and TV episode source/play endpoints.\n- Added playback provider health information.\n- Kept playback discovery separate from trailer/video metadata.\n- Avoided player HTML scraping, direct media proxying, DRM handling, and protected-key extraction.\n\n# Changelog
 
 ## 2026-09-25
 
