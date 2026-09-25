@@ -10,7 +10,9 @@ import { TvmazeClient, TvmazeProviderError, createTvmazeRoutes, createTvmazeSche
 import { TmdbClient, createTmdbRoutes } from "./providers/tmdb/index.js";
 import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
-import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";\nimport { VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
+import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
+import { VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
+import { VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -185,7 +187,8 @@ export function createApp(config: Config = loadConfig()) {
   const tvmaze = new TvmazeClient(config.tvmaze);
   const tmdb = new TmdbClient(config.tmdb);
   const discovery = new DiscoveryService(tmdb, tvmaze);
-  const tmdbVideos = new TmdbVideoClient(config.tmdb);\n  const playback = new VidSrcProvider(config.vidsrc);
+  const tmdbVideos = new TmdbVideoClient(config.tmdb);
+  const playback = new VidSrcProvider(config.vidsrc);
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -206,7 +209,7 @@ export function createApp(config: Config = loadConfig()) {
     data: {
       status: "healthy",
       service: "movieapi",
-      version: "0.5.0",
+      version: "0.7.0",
       timestamp: new Date().toISOString(),
       providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth(), vidsrc: playback.getHealth() }
     }
@@ -221,7 +224,8 @@ export function createApp(config: Config = loadConfig()) {
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
-  app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));\n  app.route("/api/v1", createPlaybackRoutes(playback));
+  app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
+  app.route("/api/v1", createPlaybackRoutes(playback));
 
   app.get("/api/v1/search", async (c) => {
     const q = c.req.query("q")?.trim();
