@@ -42,4 +42,31 @@ TMDB also provides the movie metadata foundation because TVmaze is not the movie
 - Structured JSON logging
 - Runtime environment validation
 
-Phase 4 adds caching, retries, circuit breakers, and provider health. Phase 5 adds provider-independent discovery aggregation. Trailers and playback remain later phases.
+## Phase 6 — Videos and trailers
+
+- GET /api/v1/movie/:id/videos
+- GET /api/v1/tv/:id/videos
+- GET /api/v1/tv/:id/season/:season/episode/:episode/videos
+
+Video metadata is separate from playback. TMDB video responses are normalized without exposing provider-specific internals.
+
+## Phase 7 — Playback
+
+- GET /api/v1/movie/:id/sources
+- GET /api/v1/movie/:id/play
+- GET /api/v1/tv/:id/season/:season/episode/:episode/sources
+- GET /api/v1/tv/:id/season/:season/episode/:episode/play
+
+Playback uses a provider-neutral source contract. The initial VidSrc adapter returns documented client-side embed URLs; MovieApi does not scrape player HTML or proxy protected media streams. Source URLs are intentionally not cached as long-lived media objects.
+
+## Middleware
+
+- Request IDs through X-Request-ID
+- CORS
+- API-key authentication foundation
+- Bounded per-instance rate limiting
+- Standardized JSON errors
+- Structured JSON logging
+- Runtime environment validation
+
+Phase 7 establishes the playback adapter boundary. Direct media proxying, DRM handling, protected-key extraction, and access-control bypasses are intentionally outside the API.
