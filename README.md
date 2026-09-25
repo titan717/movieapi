@@ -4,7 +4,7 @@ MovieApi is the backend service layer for Kinoma, providing a stable, normalized
 
 ## Status
 
-**Phase 1 — API Foundation implemented.**
+**Phase 1 — API Foundation implemented; runtime/deployment verification in progress.**
 
 The foundation includes request tracing, CORS, API-key authentication, rate limiting, standardized errors, health/version endpoints, tests, and live documentation.
 
@@ -46,7 +46,7 @@ Kinoma consumes MovieApi's normalized schemas and does not depend directly on pr
 
 ## Phase discipline
 
-Every phase is implemented, tested, documented, and verified before the next phase begins. Documentation and OpenAPI are updated alongside implementation.
+A phase is not considered complete until its implementation, tests, documentation, OpenAPI contract, CI, and deployment path have been checked. Documentation and OpenAPI are updated alongside implementation.
 
 ## Documentation
 
