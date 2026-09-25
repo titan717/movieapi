@@ -7,6 +7,7 @@ import { authMiddleware } from "./middleware/auth.js";
 import { rateLimitMiddleware } from "./middleware/rate-limit.js";
 import { log } from "./logger.js";
 import { TvmazeClient, TvmazeProviderError, createTvmazeRoutes, createTvmazeScheduleRoutes } from "./providers/tvmaze/index.js";
+import { TmdbClient, createTmdbRoutes } from "./providers/tmdb/index.js";
 import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 
 type AppEnv = { Variables: { requestId: string } };
@@ -110,7 +111,7 @@ const OPENAPI_YAML = [
 
 export function createApp(config: Config = loadConfig()) {
   const app = new Hono<AppEnv>();
-  const tvmaze = new TvmazeClient(config.tvmaze);
+  const tvmaze = new TvmazeClient(config.tvmaze);\n  const tmdb = new TmdbClient(config.tmdb);
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -123,7 +124,7 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/", (c) => c.json({
     success: true,
-    data: { name: "MovieApi", version: "0.2.0", status: "tvmaze-provider" }
+    data: { name: "MovieApi", version: "0.3.0", status: "metadata-providers" }
   }));
 
   app.get("/api/v1/health", (c) => c.json({
@@ -133,16 +134,16 @@ export function createApp(config: Config = loadConfig()) {
       service: "movieapi",
       version: "0.2.0",
       timestamp: new Date().toISOString(),
-      providers: { tvmaze: "configured" }
+      providers: { tvmaze: "configured", tmdb: tmdb.enabled ? "configured" : "unconfigured" }
     }
   }));
 
   app.get("/api/v1/version", (c) => c.json({
     success: true,
-    data: { version: "0.2.0", apiVersion: "v1", phase: 2 }
+    data: { version: "0.3.0", apiVersion: "v1", phase: 3 }
   }));
 
-  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze));
+  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));\n  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
 
   app.get("/api/v1/search", async (c) => {
@@ -190,7 +191,7 @@ export function createApp(config: Config = loadConfig()) {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MovieApi Docs</title>
 <style>body{font-family:system-ui,sans-serif;max-width:960px;margin:40px auto;padding:0 20px;line-height:1.6;color:#18202a}code,pre{background:#f4f5f7;border-radius:8px}code{padding:2px 5px}pre{padding:16px;overflow:auto}.route{border:1px solid #dfe3e8;border-radius:12px;padding:16px;margin:12px 0}a{color:#135cc8}</style>
-</head><body><h1>MovieApi</h1><p>Phase 2 TVmaze provider · v0.2.0</p>
+</head><body><h1>MovieApi</h1><p>Phase 3 metadata providers · v0.3.0</p>
 <p><a href="/openapi.yaml">OpenAPI specification</a></p>
 <div class="route"><strong>GET /api/v1/search?q=...</strong><br>Search normalized TV results.</div>
 <div class="route"><strong>GET /api/v1/tv/:id</strong><br>Show metadata.</div>
