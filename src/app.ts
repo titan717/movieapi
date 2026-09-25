@@ -17,7 +17,7 @@ const OPENAPI_YAML = [
   "openapi: 3.1.0",
   "info:",
   "  title: MovieApi",
-  "  version: 0.4.0",
+  "  version: 0.5.0",
   "  description: Phase 5 discovery aggregation for Kinoma.",
   "servers:",
   "  - url: /api/v1",
