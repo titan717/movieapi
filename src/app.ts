@@ -113,7 +113,7 @@ const OPENAPI_YAML = [
   "      responses:",
   '        "200":',
   "          description: TMDB movie results",
-"  /airing:",
+  "  /airing:",
   "    get:",
   "      summary: Get schedule for a country/date",
   "      responses:",
@@ -131,9 +131,7 @@ const OPENAPI_YAML = [
   "      responses:",
   '        "200":',
   "          description: Airing episodes for the date"
-].join("
-") + "
-";
+].join("\\n") + "\\n";
 
 export function createApp(config: Config = loadConfig()) {
   const app = new Hono<AppEnv>();
