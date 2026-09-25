@@ -16,8 +16,8 @@ const OPENAPI_YAML = [
   "openapi: 3.1.0",
   "info:",
   "  title: MovieApi",
-  "  version: 0.2.0",
-  "  description: Phase 2 TVmaze metadata provider for Kinoma.",
+  "  version: 0.3.0",
+  "  description: Phase 3 metadata providers for Kinoma.",
   "servers:",
   "  - url: /api/v1",
   "paths:",
@@ -131,11 +131,14 @@ const OPENAPI_YAML = [
   "      responses:",
   '        "200":',
   "          description: Airing episodes for the date"
-].join("\n") + "\n";
+].join("
+") + "
+";
 
 export function createApp(config: Config = loadConfig()) {
   const app = new Hono<AppEnv>();
-  const tvmaze = new TvmazeClient(config.tvmaze);\n  const tmdb = new TmdbClient(config.tmdb);
+  const tvmaze = new TvmazeClient(config.tvmaze);
+  const tmdb = new TmdbClient(config.tmdb);
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -156,7 +159,7 @@ export function createApp(config: Config = loadConfig()) {
     data: {
       status: "healthy",
       service: "movieapi",
-      version: "0.2.0",
+      version: "0.3.0",
       timestamp: new Date().toISOString(),
       providers: { tvmaze: "configured", tmdb: tmdb.enabled ? "configured" : "unconfigured" }
     }
@@ -167,7 +170,8 @@ export function createApp(config: Config = loadConfig()) {
     data: { version: "0.3.0", apiVersion: "v1", phase: 3 }
   }));
 
-  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));\n  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb));
+  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));
+  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
 
   app.get("/api/v1/search", async (c) => {
