@@ -7,6 +7,8 @@ import { authMiddleware } from "./middleware/auth.js";
 import { rateLimitMiddleware } from "./middleware/rate-limit.js";
 import { log } from "./logger.js";
 
+type AppEnv = { Variables: { requestId: string } };
+
 const OPENAPI_YAML = [
   "openapi: 3.1.0",
   "info:",
@@ -33,7 +35,7 @@ const OPENAPI_YAML = [
 ].join("\n") + "\n";
 
 export function createApp(config: Config = loadConfig()) {
-  const app = new Hono();
+  const app = new Hono<AppEnv>();
 
   app.use("*", requestId);
   app.use("*", cors({
