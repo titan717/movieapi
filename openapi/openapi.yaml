@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: MovieApi
-  version: 0.2.0
-  description: Kinoma media API with the Phase 2 TVmaze provider.
+  version: 0.3.0
+  description: Kinoma media API with TVmaze primary metadata and TMDB fallback/enrichment.
 servers:
   - url: /api/v1
 paths:
@@ -112,6 +112,50 @@ paths:
       responses:
         "200":
           description: Show images
+  /tmdb/movie/{id}:
+    get:
+      summary: Get a normalized TMDB movie
+      parameters:
+        - $ref: "#/components/parameters/TmdbId"
+      responses:
+        "200":
+          description: TMDB movie
+  /tmdb/tv/{id}:
+    get:
+      summary: Get a normalized TMDB TV show
+      parameters:
+        - $ref: "#/components/parameters/TmdbId"
+      responses:
+        "200":
+          description: TMDB TV show
+  /tmdb/search/tv:
+    get:
+      summary: Search TMDB TV shows
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        "200":
+          description: TMDB TV search results
+  /tmdb/search/movie:
+    get:
+      summary: Search TMDB movies
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        "200":
+          description: TMDB movie search results
   /airing:
     get:
       summary: Get a country/date airing schedule
@@ -143,6 +187,11 @@ paths:
           description: Airing episodes
 components:
   parameters:
+    TmdbId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
     ShowId:
       name: id
       in: path
