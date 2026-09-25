@@ -18,6 +18,12 @@ Verification:
 
     npm run check
 
-Vercel's current Hono guidance supports exporting the Hono application as the default export for a Vercel deployment. The repository therefore exposes api/index.ts as the Vercel entrypoint.
+## Vercel
+
+The repository uses the Hono Vercel pattern with a root `index.ts` that default-exports the Hono application.
+
+The current Hono guidance documents this default-export pattern for Vercel deployments. urlHono Vercel deployment guidancehttps://hono.dev/docs/getting-started/vercel
 
 Production secrets must be configured through the deployment platform's environment variables.
+
+The Vercel deployment path is intentionally checked separately from the Node server path because the two runtimes have different packaging requirements.
