@@ -10,6 +10,7 @@ import { TvmazeClient, TvmazeProviderError, createTvmazeRoutes, createTvmazeSche
 import { TmdbClient, createTmdbRoutes } from "./providers/tmdb/index.js";
 import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
+import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -17,7 +18,7 @@ const OPENAPI_YAML = [
   "openapi: 3.1.0",
   "info:",
   "  title: MovieApi",
-  "  version: 0.5.0",
+  "  version: 0.6.0",
   "  description: Phase 5 discovery aggregation for Kinoma.",
   "servers:",
   "  - url: /api/v1",
@@ -184,6 +185,7 @@ export function createApp(config: Config = loadConfig()) {
   const tvmaze = new TvmazeClient(config.tvmaze);
   const tmdb = new TmdbClient(config.tmdb);
   const discovery = new DiscoveryService(tmdb, tvmaze);
+  const tmdbVideos = new TmdbVideoClient(config.tmdb);
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -219,6 +221,7 @@ export function createApp(config: Config = loadConfig()) {
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
+  app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
 
   app.get("/api/v1/search", async (c) => {
     const q = c.req.query("q")?.trim();
