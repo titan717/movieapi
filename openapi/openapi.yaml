@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: MovieApi
-  version: 0.5.0
-  description: Kinoma media API with metadata, reliability, and provider-independent discovery aggregation.
+  version: 0.7.0
+  description: Kinoma media API with metadata, reliability, discovery, videos, and provider-independent playback.
 servers:
   - url: /api/v1
 paths:
@@ -252,6 +252,54 @@ paths:
       summary: Kinoma homepage discovery aggregation
       responses:
         "200": { description: Home discovery data }
+  /movie/{id}/sources:
+    get:
+      summary: Get movie playback sources
+      parameters:
+        - $ref: "#/components/parameters/TmdbId"
+      responses:
+        "200": { description: Provider-neutral movie playback sources }
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "503":
+          $ref: "#/components/responses/ProviderUnavailable"
+  /movie/{id}/play:
+    get:
+      summary: Get primary movie playback source
+      parameters:
+        - $ref: "#/components/parameters/TmdbId"
+      responses:
+        "200": { description: Primary movie playback source }
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "503":
+          $ref: "#/components/responses/ProviderUnavailable"
+  /tv/{id}/season/{season}/episode/{episode}/sources:
+    get:
+      summary: Get TV episode playback sources
+      parameters:
+        - $ref: "#/components/parameters/TmdbId"
+        - $ref: "#/components/parameters/Season"
+        - $ref: "#/components/parameters/Episode"
+      responses:
+        "200": { description: Provider-neutral TV episode playback sources }
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "503":
+          $ref: "#/components/responses/ProviderUnavailable"
+  /tv/{id}/season/{season}/episode/{episode}/play:
+    get:
+      summary: Get primary TV episode playback source
+      parameters:
+        - $ref: "#/components/parameters/TmdbId"
+        - $ref: "#/components/parameters/Season"
+        - $ref: "#/components/parameters/Episode"
+      responses:
+        "200": { description: Primary TV episode playback source }
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "503":
+          $ref: "#/components/responses/ProviderUnavailable"
 components:
   parameters:
     TmdbId:
@@ -289,6 +337,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
+    ProviderUnavailable:
+      description: Playback provider unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
     NotFound:
       description: Resource not found
       content:
@@ -314,3 +368,6 @@ components:
             code: { type: string }
             message: { type: string }
             requestId: { type: string }
+
+# Phase 7 playback source schema
+# Playback sources are client-side embed URLs returned by the configured provider.
