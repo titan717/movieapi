@@ -4,9 +4,9 @@ MovieApi is the backend service layer for Kinoma. It normalizes media metadata a
 
 ## Current status
 
-Phase 0 — Architecture and documentation.
+Phase 4 — Caching, bounded retries, circuit breaking, provider health, and stale-while-revalidate are implemented in the provider clients.
 
-No provider integration is implemented yet.
+Phase 5 is the discovery/aggregation layer.
 
 ## Planned stack
 
