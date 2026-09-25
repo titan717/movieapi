@@ -1,13 +1,13 @@
 # Authentication
 
-The public API is planned to support API-key authentication.
+Phase 1 implements the API-key authentication foundation.
 
-Secrets are server-side only.
+Set MOVIEAPI_AUTH_REQUIRED=true and configure MOVIEAPI_API_KEYS as a comma-separated list.
 
-Rules:
+Clients then send:
 
-- Never expose provider credentials to Kinoma.
-- Never log API keys or authorization headers.
-- API keys should be rotatable.
-- Authentication failures use standardized error responses.
-- Internal admin operations use stronger authentication than public API access.
+    X-API-Key: key-one
+
+If authentication is required without configured keys, the application fails startup instead of running in an accidentally unsecured configuration.
+
+Provider credentials remain server-side secrets and are never returned to Kinoma or logged.
