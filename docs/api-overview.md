@@ -42,4 +42,4 @@ TMDB also provides the movie metadata foundation because TVmaze is not the movie
 - Structured JSON logging
 - Runtime environment validation
 
-Caching, retries, circuit breakers, discovery aggregation, trailers, and playback are implemented in later phases.
+Phase 4 adds caching, retries, circuit breakers, and provider health. Phase 5 adds provider-independent discovery aggregation. Trailers and playback remain later phases.
