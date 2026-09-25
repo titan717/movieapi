@@ -91,7 +91,9 @@ export const seasonSchema = z.object({
 }).passthrough();
 
 export const scheduleEpisodeSchema = episodeSchema.extend({
-  show: showSchema.optional()
+  _embedded: z.object({
+    show: showSchema.optional()
+  }).passthrough().optional()
 }).passthrough();
 
 export type TvmazeShow = z.infer<typeof showSchema>;
