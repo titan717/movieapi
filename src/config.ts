@@ -11,6 +11,7 @@ const envSchema = z.object({
   MOVIEAPI_TMDB_ACCESS_TOKEN: z.string().optional().default(""),
   MOVIEAPI_TMDB_BASE_URL: z.string().url().default("https://api.themoviedb.org/3"),
   MOVIEAPI_TMDB_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(8_000),
+  MOVIEAPI_VIDSRC_BASE_URL: z.string().url().default("https://vidsrc.sh"),
   PORT: z.coerce.number().int().positive().default(3000)
 });
 
@@ -55,6 +56,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       baseUrl: parsed.MOVIEAPI_TMDB_BASE_URL,
       timeoutMs: parsed.MOVIEAPI_TMDB_TIMEOUT_MS
     },
+    vidsrc: { baseUrl: parsed.MOVIEAPI_VIDSRC_BASE_URL },
     port: parsed.PORT
   };
 }
