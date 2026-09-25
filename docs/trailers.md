@@ -1,30 +1,27 @@
-# Trailers and Videos
+# Videos & trailers
 
-Trailers are separate from actual playback.
+Phase 6 provides normalized TMDB video metadata for movies, TV series, and TV episodes.
 
-## Normalized video
+## Endpoints
 
-```json
-{
-  "id": "abc123",
-  "name": "Official Trailer",
-  "type": "Trailer",
-  "official": true,
-  "site": "YouTube",
-  "key": "abc123",
-  "url": "https://...",
-  "thumbnail": "https://...",
-  "publishedAt": "2026-09-25"
-}
-```
+- GET /api/v1/movie/:id/videos
+- GET /api/v1/tv/:id/videos
+- GET /api/v1/tv/:id/season/:season/episode/:episode/videos
 
-## Selection order
+A trailer is metadata for a promotional video, not a playback source.
 
-1. Official trailer
-2. Official teaser
-3. Suitable official clip
-4. Backdrop fallback
+## Normalization
 
-Kinoma may autoplay previews inline where browser policy allows. Fullscreen remains user-controlled.
+Each video exposes its provider ID, name, type, provider site/key, URL when supported, embed URL when supported, thumbnail when available, official flag, publication timestamp, and language/country.
 
-MovieApi should fetch metadata and videos independently so detail pages can render metadata without waiting for video enrichment.
+YouTube URLs and thumbnails are generated only when TMDB identifies the site as YouTube. Other providers remain provider-neutral.
+
+The primary trailer prefers official trailers and then the most recently published trailer.
+
+## Reliability
+
+Video requests use the same bounded cache, retry, circuit-breaker and provider-health mechanisms as metadata providers.
+
+## Scope
+
+This phase does not implement media playback, DRM handling, source scraping, or protected-player access. Playback is a later phase.
