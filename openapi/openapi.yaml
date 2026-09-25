@@ -185,6 +185,73 @@ paths:
       responses:
         "200":
           description: Airing episodes
+  /popular/movies:
+    get:
+      summary: Popular movies
+      responses:
+        "200": { description: Popular movies }
+  /popular/tv:
+    get:
+      summary: Popular TV
+      responses:
+        "200": { description: Popular TV }
+  /latest/movies:
+    get:
+      summary: Latest movies
+      responses:
+        "200": { description: Latest movies }
+  /latest/tv:
+    get:
+      summary: Latest TV
+      responses:
+        "200": { description: Latest TV }
+  /upcoming/movies:
+    get:
+      summary: Upcoming movies
+      responses:
+        "200": { description: Upcoming movies }
+  /upcoming/tv:
+    get:
+      summary: Upcoming TV
+      responses:
+        "200": { description: Upcoming TV }
+  /airing/upcoming:
+    get:
+      summary: Upcoming TV airing
+      responses:
+        "200": { description: Upcoming TV }
+  /trending:
+    get:
+      summary: Trending movies and TV
+      responses:
+        "200": { description: Trending results }
+  /featured:
+    get:
+      summary: Featured media
+      responses:
+        "200": { description: Featured media }
+  /genres:
+    get:
+      summary: List genres
+      responses:
+        "200": { description: Genre list }
+  /genres/{genre}:
+    get:
+      summary: Discover by genre
+      responses:
+        "200": { description: Genre results }
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /recommendations/{id}:
+    get:
+      summary: Recommendations
+      responses:
+        "200": { description: Recommendations }
+  /home:
+    get:
+      summary: Kinoma homepage discovery aggregation
+      responses:
+        "200": { description: Home discovery data }
 components:
   parameters:
     TmdbId:
