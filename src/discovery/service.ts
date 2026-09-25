@@ -132,3 +132,98 @@ export class DiscoveryService {
     }, 300_000, 900_000);
   }
 
+
+  upcomingAiring(page = 1) {
+    return this.cached(`airing:upcoming:${page}`, async () => {
+      const result = await this.tmdb.onTheAirTv(page);
+      return {
+        page: result.page ?? page,
+        totalPages: result.total_pages ?? 0,
+        totalResults: result.total_results ?? 0,
+        results: result.results.map(normalizeTmdbTvResult),
+        source: "tmdb"
+      };
+    });
+  }
+
+  trending(timeWindow: "day" | "week" = "day") {
+    return this.cached(`trending:${timeWindow}`, async () => {
+      const result = await this.tmdb.trending(timeWindow);
+      return {
+        page: result.page ?? 1,
+        totalPages: result.total_pages ?? 1,
+        totalResults: result.total_results ?? result.results.length,
+        results: result.results.map(normalizeTmdbTrendingResult)
+      };
+    });
+  }
+
+  featured() {
+    return this.cached("featured", async () => {
+      const trending = await this.trending("day");
+      return { item: trending.results[0] ?? null, source: "tmdb-trending" };
+    });
+  }
+
+  async genres(type: "movie" | "tv") {
+    return this.cached(`genres:${type}`, async () => {
+      const result = type === "movie" ? await this.tmdb.movieGenres() : await this.tmdb.tvGenres();
+      return { type, genres: result.genres };
+    }, 86_400_000, 604_800_000);
+  }
+
+  async genre(type: "movie" | "tv", value: string, page = 1) {
+    const numeric = Number(value);
+    let genreId: number | null = Number.isInteger(numeric) && numeric > 0 ? numeric : null;
+    if (!genreId) {
+      const list = await this.genres(type);
+      const match = list.genres.find((genre) => slug(genre.name) === slug(value));
+      genreId = match?.id ?? null;
+    }
+    if (!genreId) return null;
+
+    if (type === "movie") {
+      const result = await this.tmdb.discoverMovie({ page, withGenres: String(genreId), sortBy: "popularity.desc" });
+      return {
+        type, genreId, page: result.page ?? page, totalPages: result.total_pages ?? 0,
+        totalResults: result.total_results ?? 0, results: result.results.map(normalizeTmdbMovieResult)
+      };
+    }
+
+    const result = await this.tmdb.discoverTv({ page, withGenres: String(genreId), sortBy: "popularity.desc" });
+    return {
+      type, genreId, page: result.page ?? page, totalPages: result.total_pages ?? 0,
+      totalResults: result.total_results ?? 0, results: result.results.map(normalizeTmdbTvResult)
+    };
+  }
+
+  recommendations(type: "movie" | "tv", id: number, page = 1) {
+    return this.cached(`recommendations:${type}:${id}:${page}`, async () => {
+      const result = type === "movie"
+        ? await this.tmdb.movieRecommendations(id, page)
+        : await this.tmdb.tvRecommendations(id, page);
+      return {
+        type, id, page: result.page ?? page, totalPages: result.total_pages ?? 0,
+        totalResults: result.total_results ?? 0,
+        results: result.results.map(type === "movie" ? normalizeTmdbMovieResult : normalizeTmdbTvResult)
+      };
+    });
+  }
+
+  async home() {
+    const [featured, trending, popularMovies, popularTv, latestMovies, latestTv] = await Promise.all([
+      this.featured(), this.trending("day"), this.popularMovies(1), this.popularTv(1), this.latestMovies(1), this.latestTv(1)
+    ]);
+    return {
+      featured: featured.item,
+      sections: {
+        trending: trending.results,
+        popularMovies: popularMovies.results,
+        popularTv: popularTv.results,
+        latestMovies: latestMovies.results,
+        latestTv: latestTv.results
+      },
+      generatedAt: new Date().toISOString()
+    };
+  }
+}
