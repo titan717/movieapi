@@ -206,7 +206,7 @@ export function createTvmazeScheduleRoutes(client: TvmazeClient) {
           date: date ?? new Date().toISOString().slice(0, 10),
           episodes: episodes.map((item) => ({
             ...normalizeEpisode(item),
-            show: item.show ? normalizeShow(item.show) : null
+            show: item._embedded?.show ? normalizeShow(item._embedded.show) : null
           })),
           source: "tvmaze"
         }
