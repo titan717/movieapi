@@ -1,7 +1,15 @@
 # Movie Metadata
 
-Movie metadata is not implemented by Phase 2.
+Phase 3 introduces TMDB as the movie metadata provider.
 
-TVmaze is primarily a TV data provider; its public API is used here for TV shows, seasons, episodes, images, and schedules. Movie metadata will be introduced through the Phase 3 TMDB provider/fallback design.
+## Endpoint
 
-The normalized movie contract remains reserved for the future movie provider layer and must not be populated with fabricated TVmaze data.
+- GET /api/v1/tmdb/movie/:id
+
+The normalized movie model contains a stable MovieApi ID, title, original title, year, rating, poster, backdrop, overview, genres, runtime, release date, status, language, and TMDB provider ID.
+
+TVmaze is not used as a movie metadata source.
+
+## Future service layer
+
+A later metadata service will expose provider-independent movie routes and can select TMDB as the current movie provider without exposing provider-specific URLs to Kinoma.
