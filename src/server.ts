@@ -7,4 +7,4 @@ const config = loadConfig();
 const app = createApp(config);
 
 serve({ fetch: app.fetch, port: config.port });
-log("info", "server_started", { port: config.port, version: "0.3.0" });
+log("info", "server_started", { port: config.port, version: "0.5.0" });
