@@ -30,7 +30,7 @@ export function normalizeShow(show: TvmazeShow) {
     year: show.premiered ? Number(show.premiered.slice(0, 4)) || null : null,
     rating: show.rating?.average ?? null,
     poster: images?.original ?? images?.medium ?? null,
-    backdrop: images?.original ?? null,
+    backdrop: null,
     overview: cleanHtml(show.summary),
     genres: show.genres ?? [],
     runtime: show.averageRuntime ?? show.runtime ?? null,
