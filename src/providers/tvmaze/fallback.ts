@@ -68,7 +68,7 @@ export async function findMatchingTmdbTv(show: TvmazeShow, client: TmdbClient): 
 export function mergeTvmazeWithTmdb(show: TvmazeShow, tmdb: TmdbTvDetails) {
   const primary = normalizeShow(show);
   const fallback = normalizeTmdbTv(tmdb);
-  const data: ReturnType<typeof normalizeShow> = { ...primary };
+  const data = { ...primary, ids: { ...primary.ids, tmdb: tmdb.id } };
 
   for (const field of fallbackFields) {
     const primaryValue = data[field];
@@ -77,11 +77,6 @@ export function mergeTvmazeWithTmdb(show: TvmazeShow, tmdb: TmdbTvDetails) {
       (data as Record<string, unknown>)[field] = fallbackValue;
     }
   }
-
-  data.ids = {
-    ...data.ids,
-    tmdb: tmdb.id
-  };
 
   return data;
 }
