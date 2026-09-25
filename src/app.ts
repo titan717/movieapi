@@ -9,6 +9,7 @@ import { log } from "./logger.js";
 import { TvmazeClient, TvmazeProviderError, createTvmazeRoutes, createTvmazeScheduleRoutes } from "./providers/tvmaze/index.js";
 import { TmdbClient, createTmdbRoutes } from "./providers/tmdb/index.js";
 import { normalizeShow } from "./providers/tvmaze/normalizer.js";
+import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -143,6 +144,7 @@ export function createApp(config: Config = loadConfig()) {
   const app = new Hono<AppEnv>();
   const tvmaze = new TvmazeClient(config.tvmaze);
   const tmdb = new TmdbClient(config.tmdb);
+  const discovery = new DiscoveryService(tmdb, tvmaze);
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -155,7 +157,7 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/", (c) => c.json({
     success: true,
-    data: { name: "MovieApi", version: "0.4.0", status: "metadata-providers" }
+    data: { name: "MovieApi", version: "0.5.0", status: "discovery" }
   }));
 
   app.get("/api/v1/health", (c) => c.json({
@@ -171,12 +173,13 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/api/v1/version", (c) => c.json({
     success: true,
-    data: { version: "0.4.0", apiVersion: "v1", phase: 4 }
+    data: { version: "0.5.0", apiVersion: "v1", phase: 5 }
   }));
 
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
+  app.route("/api/v1", createDiscoveryRoutes(discovery));
 
   app.get("/api/v1/search", async (c) => {
     const q = c.req.query("q")?.trim();
@@ -223,7 +226,7 @@ export function createApp(config: Config = loadConfig()) {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MovieApi Docs</title>
 <style>body{font-family:system-ui,sans-serif;max-width:960px;margin:40px auto;padding:0 20px;line-height:1.6;color:#18202a}code,pre{background:#f4f5f7;border-radius:8px}code{padding:2px 5px}pre{padding:16px;overflow:auto}.route{border:1px solid #dfe3e8;border-radius:12px;padding:16px;margin:12px 0}a{color:#135cc8}</style>
-</head><body><h1>MovieApi</h1><p>Phase 4 reliability layer · v0.4.0</p>
+</head><body><h1>MovieApi</h1><p>Phase 5 discovery layer · v0.5.0</p>
 <p><a href="/openapi.yaml">OpenAPI specification</a></p>
 <div class="route"><strong>GET /api/v1/search?q=...</strong><br>Search normalized TV results.</div>
 <div class="route"><strong>GET /api/v1/tv/:id</strong><br>Show metadata.</div>
@@ -233,6 +236,10 @@ export function createApp(config: Config = loadConfig()) {
 <div class="route"><strong>GET /api/v1/tv/:id/season/:season/episode/:episode</strong><br>Episode lookup.</div>
 <div class="route"><strong>GET /api/v1/airing?country=US&amp;date=YYYY-MM-DD</strong><br>Country/date schedule.</div>
 <div class="route"><strong>GET /api/v1/airing/today</strong><br>Today's schedule.</div>
+<div class="route"><strong>GET /api/v1/popular/movies</strong><br>Popular movies.</div>
+<div class="route"><strong>GET /api/v1/popular/tv</strong><br>Popular TV.</div>
+<div class="route"><strong>GET /api/v1/trending</strong><br>Trending movies and TV.</div>
+<div class="route"><strong>GET /api/v1/home</strong><br>Kinoma homepage discovery aggregation.</div>
 <h2>Authentication</h2><p>When enabled, send <code>X-API-Key</code>.</p>
 <h2>Attribution</h2><p>TVmaze data is licensed under CC BY-SA. Kinoma must provide TVmaze attribution/link-back when using the public TVmaze API.</p>
 <h2>Success</h2><pre>{"success":true,"data":{}}</pre>
