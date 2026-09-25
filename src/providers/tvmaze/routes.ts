@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../../errors.js";
+import { log } from "../../logger.js";
+import type { TmdbClient } from "../tmdb/client.js";
+import { findMatchingTmdbTv, mergeTvmazeWithTmdb, missingFallbackFields } from "./fallback.js";
 import { TvmazeClient, TvmazeProviderError } from "./client.js";
 import { normalizeEpisode, normalizeSeason, normalizeShow } from "./normalizer.js";
 
@@ -34,7 +37,7 @@ function validateId(c: Context<AppEnv>, value: string, label = "TVmaze show ID")
   return { id, response: null };
 }
 
-export function createTvmazeRoutes(client: TvmazeClient) {
+export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient) {
   const app = new Hono<AppEnv>();
 
   app.get("/search", async (c) => {
@@ -77,7 +80,32 @@ export function createTvmazeRoutes(client: TvmazeClient) {
     if (checked.response) return checked.response;
 
     try {
-      return c.json({ success: true, data: normalizeShow(await client.getShow(checked.id!)) });
+      const show = await client.getShow(checked.id!);
+      const normalized = normalizeShow(show);
+      const missing = tmdb?.enabled ? missingFallbackFields(normalized) : [];
+      if (missing.length > 0 && tmdb) {
+        try {
+          const match = await findMatchingTmdbTv(show, tmdb);
+          if (match) {
+            log("info", "provider_fallback", {
+              requestId: c.get("requestId"),
+              primaryProvider: "tvmaze",
+              fallbackProvider: "tmdb",
+              reason: "MISSING_FIELD",
+              fields: missing
+            });
+            return c.json({ success: true, data: mergeTvmazeWithTmdb(show, match) });
+          }
+        } catch (fallbackError) {
+          log("warn", "provider_fallback_failed", {
+            requestId: c.get("requestId"),
+            primaryProvider: "tvmaze",
+            fallbackProvider: "tmdb",
+            reason: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+          });
+        }
+      }
+      return c.json({ success: true, data: normalized });
     } catch (error) {
       return handleProviderError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
     }
