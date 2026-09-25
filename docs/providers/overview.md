@@ -14,7 +14,7 @@ TVmaze's public API is licensed under CC BY-SA and requires attribution. Kinoma 
 
 ### TMDB
 
-TMDB is the planned Phase 3 fallback and field-level enrichment provider.
+TMDB is the Phase 3 fallback and enrichment provider. TVmaze remains primary for TV metadata; TMDB provides movie metadata and fills missing TV fields when a safe identity match is available.
 
 ## Playback
 
