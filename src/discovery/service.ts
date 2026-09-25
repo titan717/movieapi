@@ -202,10 +202,17 @@ export class DiscoveryService {
       const result = type === "movie"
         ? await this.tmdb.movieRecommendations(id, page)
         : await this.tmdb.tvRecommendations(id, page);
+      if (type === "movie") {
+        return {
+          type, id, page: result.page ?? page, totalPages: result.total_pages ?? 0,
+          totalResults: result.total_results ?? 0,
+          results: result.results.map(normalizeTmdbMovieResult)
+        };
+      }
       return {
         type, id, page: result.page ?? page, totalPages: result.total_pages ?? 0,
         totalResults: result.total_results ?? 0,
-        results: result.results.map(type === "movie" ? normalizeTmdbMovieResult : normalizeTmdbTvResult)
+        results: result.results.map(normalizeTmdbTvResult)
       };
     });
   }
