@@ -2,12 +2,13 @@ import { createMiddleware } from "hono/factory";
 import { errorResponse } from "../errors.js";
 import type { Config } from "../config.js";
 
+type Variables = { requestId: string };
 type Bucket = { count: number; resetAt: number };
 
 export function rateLimitMiddleware(config: Config) {
   const buckets = new Map<string, Bucket>();
 
-  return createMiddleware(async (c, next) => {
+  return createMiddleware<{ Variables: Variables }>(async (c, next) => {
     const now = Date.now();
     const key = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const current = buckets.get(key);
@@ -21,6 +22,13 @@ export function rateLimitMiddleware(config: Config) {
         return errorResponse(c, "RATE_LIMITED", "Too many requests. Please retry later.", 429, c.get("requestId"));
       }
     }
+
+    if (buckets.size > 10_000) {
+      for (const [bucketKey, bucket] of buckets) {
+        if (bucket.resetAt <= now) buckets.delete(bucketKey);
+      }
+    }
+
     await next();
   });
 }
