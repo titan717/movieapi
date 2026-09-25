@@ -5,15 +5,22 @@ Providers are adapters behind a common interface.
 ## Metadata
 
 ### TVmaze
-Primary metadata provider.
+
+TVmaze is the Phase 2 primary metadata provider for TV content. The public API provides show search, show details, seasons, episodes, images, and schedules. The provider uses a descriptive User-Agent and validates every JSON response before normalization.
+
+The public TVmaze API is rate limited and asks clients to handle HTTP 429 responses with backoff. MovieApi deliberately does not add retry logic in Phase 2; bounded retry/backoff belongs to the Phase 4 reliability layer.
+
+TVmaze's public API is licensed under CC BY-SA and requires attribution. Kinoma must include an appropriate TVmaze credit/link when using this provider.
 
 ### TMDB
-Fallback and field-level enrichment provider.
+
+TMDB is the planned Phase 3 fallback and field-level enrichment provider.
 
 ## Playback
 
 ### VidSrc
-Playback provider. It is not treated as a metadata authority.
+
+VidSrc is the planned playback provider. It is not treated as a metadata authority and is isolated from the TVmaze metadata adapter.
 
 ## Provider rules
 
