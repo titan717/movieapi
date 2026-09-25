@@ -12,7 +12,6 @@ import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
 import { VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
-import { VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
