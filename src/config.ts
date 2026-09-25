@@ -6,7 +6,7 @@ const envSchema = z.object({
   MOVIEAPI_RATE_LIMIT: z.coerce.number().int().positive().default(120),
   MOVIEAPI_RATE_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   MOVIEAPI_TVMAZE_BASE_URL: z.string().url().default("https://api.tvmaze.com"),
-  MOVIEAPI_TVMAZE_USER_AGENT: z.string().min(1).default("MovieApi/0.5.0 (Kinoma)"),
+  MOVIEAPI_TVMAZE_USER_AGENT: z.string().min(1).default("MovieApi/0.7.0 (Kinoma)"),
   MOVIEAPI_TVMAZE_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(8_000),
   MOVIEAPI_TMDB_ACCESS_TOKEN: z.string().optional().default(""),
   MOVIEAPI_TMDB_BASE_URL: z.string().url().default("https://api.themoviedb.org/3"),
