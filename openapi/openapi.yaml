@@ -1,26 +1,184 @@
 openapi: 3.1.0
 info:
   title: MovieApi
-  version: 0.1.0
-  description: Phase 1 API Foundation for Kinoma.
+  version: 0.2.0
+  description: Kinoma media API with the Phase 2 TVmaze provider.
 servers:
   - url: /api/v1
 paths:
   /health:
     get:
       summary: API health
-      operationId: getHealth
       responses:
         "200":
           description: Healthy API
   /version:
     get:
       summary: API version
-      operationId: getVersion
       responses:
         "200":
           description: Version information
+  /search:
+    get:
+      summary: Search TV shows
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: Normalized TV search results
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+  /tv/search:
+    get:
+      summary: Search TV shows through the TV route
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: Normalized TV search results
+  /tv/{id}:
+    get:
+      summary: Get a normalized TV show
+      parameters:
+        - $ref: "#/components/parameters/ShowId"
+      responses:
+        "200":
+          description: TV show
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /tv/{id}/seasons:
+    get:
+      summary: List seasons for a TV show
+      parameters:
+        - $ref: "#/components/parameters/ShowId"
+      responses:
+        "200":
+          description: Seasons
+  /tv/{id}/episodes:
+    get:
+      summary: List episodes for a TV show
+      parameters:
+        - $ref: "#/components/parameters/ShowId"
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: specials
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Paginated episodes
+  /tv/{id}/season/{season}:
+    get:
+      summary: Get a season and its episodes
+      parameters:
+        - $ref: "#/components/parameters/ShowId"
+        - $ref: "#/components/parameters/Season"
+      responses:
+        "200":
+          description: Season and episodes
+  /tv/{id}/season/{season}/episode/{episode}:
+    get:
+      summary: Get one episode by season and number
+      parameters:
+        - $ref: "#/components/parameters/ShowId"
+        - $ref: "#/components/parameters/Season"
+        - $ref: "#/components/parameters/Episode"
+      responses:
+        "200":
+          description: Episode
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /tv/{id}/images:
+    get:
+      summary: Get TVmaze show images
+      parameters:
+        - $ref: "#/components/parameters/ShowId"
+      responses:
+        "200":
+          description: Show images
+  /airing:
+    get:
+      summary: Get a country/date airing schedule
+      parameters:
+        - $ref: "#/components/parameters/Country"
+        - $ref: "#/components/parameters/Date"
+      responses:
+        "200":
+          description: Airing episodes
+  /airing/today:
+    get:
+      summary: Get today's airing schedule
+      parameters:
+        - $ref: "#/components/parameters/Country"
+      responses:
+        "200":
+          description: Airing episodes
+  /airing/date/{date}:
+    get:
+      summary: Get an airing schedule for a date
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+        - $ref: "#/components/parameters/Country"
+      responses:
+        "200":
+          description: Airing episodes
 components:
+  parameters:
+    ShowId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Season:
+      name: season
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Episode:
+      name: episode
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Country:
+      name: country
+      in: query
+      schema: { type: string, pattern: "^[A-Za-z]{2}$", default: US }
+    Date:
+      name: date
+      in: query
+      schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+  responses:
+    InvalidRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
   schemas:
     SuccessEnvelope:
       type: object
