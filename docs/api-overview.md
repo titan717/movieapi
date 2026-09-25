@@ -32,7 +32,22 @@ TV detail requests remain TVmaze-first. When TMDB is configured and required nor
 
 TMDB also provides the movie metadata foundation because TVmaze is not the movie metadata source.
 
-## Phase 4 — Reliability\n\n- Provider response caching with stale-while-revalidate\n- Bounded retries with exponential backoff and jitter\n- Provider circuit breakers and health snapshots\n\n## Phase 5 — Discovery\n\n- Popular/latest/upcoming movies and TV\n- Trending and featured media\n- Genre lists and genre discovery\n- Recommendations\n- Airing today and upcoming airing\n- Kinoma homepage aggregation\n\n## Middleware
+## Phase 4 — Reliability
+
+- Provider response caching with stale-while-revalidate
+- Bounded retries with exponential backoff and jitter
+- Provider circuit breakers and health snapshots
+
+## Phase 5 — Discovery
+
+- Popular/latest/upcoming movies and TV
+- Trending and featured media
+- Genre lists and genre discovery
+- Recommendations
+- Airing today and upcoming airing
+- Kinoma homepage aggregation
+
+## Middleware
 
 - Request IDs through X-Request-ID
 - CORS
