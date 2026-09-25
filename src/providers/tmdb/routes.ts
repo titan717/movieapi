@@ -22,7 +22,8 @@ function providerError(c: Context<AppEnv>, error: unknown) {
     HTTP_ERROR: ["PROVIDER_UNAVAILABLE", "TMDB is currently unavailable.", 502],
     INVALID_RESPONSE: ["PROVIDER_INVALID_RESPONSE", "TMDB returned an invalid response.", 502],
     NOT_FOUND: ["MEDIA_NOT_FOUND", "The requested TMDB content was not found.", 404],
-    UNAUTHORIZED: ["PROVIDER_AUTH_FAILED", "TMDB authentication failed.", 502]
+    UNAUTHORIZED: ["PROVIDER_AUTH_FAILED", "TMDB authentication failed.", 502],
+    CIRCUIT_OPEN: ["PROVIDER_UNAVAILABLE", "TMDB is temporarily unavailable.", 503]
   } as const;
   const [code, message, status] = map[error.kind];
   return errorResponse(c, code, message, status, c.get("requestId"));
