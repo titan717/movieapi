@@ -13,42 +13,30 @@ Every phase must add tests with the implementation.
 
 ## Phase 2 — TVmaze
 
-Provider/route tests use mocked `fetch` responses so the test suite does not depend on live TVmaze availability.
-
-Covered:
-
 - Show normalization
 - HTML summary cleanup
 - TVmaze 404 mapping
 - Search pagination
-- Cast/crew exclusion from the normalized public model
+- Cast/crew exclusion
+- Airing schedule embedded-show normalization
+- Malformed provider JSON mapping
 
-Additional provider-contract cases planned for the next reliability pass:
+## Phase 3 — TMDB
 
-- Malformed provider JSON
-- Missing optional fields
-- Timeout
-- 429
-- 5xx
-- schema drift
+- TMDB movie normalization
+- TMDB authentication/configuration boundary
+- TMDB unavailable response
+- TVmaze → TMDB field-level fallback
+- Preservation of valid TVmaze fields
+- External-ID matching
 
-## Service tests
+## Reliability pass
 
-- Normalization
-- Field-level fallback
-- Whole-provider fallback
-- Deduplication
+- Retry/backoff/jitter
 - Cache behavior
 - Circuit breaker behavior
-
-## Route tests
-
-- Valid request
-- Invalid request
-- Authentication
-- Rate limiting
-- Error envelopes
-- Pagination
+- Provider health
+- stale-while-revalidate
 
 ## Contract tests
 
