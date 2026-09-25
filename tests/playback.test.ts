@@ -36,8 +36,7 @@ describe("MovieApi Phase 7 playback", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.mediaType).toBe("tv_episode");
-    expect(body.data.url).toBeUndefined();
-    expect(body.data.sources.url).toBe("https://vidsrc.sh/embed/tv/1399/1/1");
+    expect(body.data.source.url).toBe("https://vidsrc.sh/embed/tv/1399/1/1");
   });
 
   it("rejects invalid playback identifiers", async () => {
