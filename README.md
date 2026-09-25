@@ -4,9 +4,9 @@ MovieApi is the backend service layer for Kinoma, providing a stable, normalized
 
 ## Status
 
-**Phase 1 — API Foundation implemented; runtime/deployment verification in progress.**
+**Phase 2 — TVmaze provider implemented; runtime/deployment verification in progress.**
 
-The foundation includes request tracing, CORS, API-key authentication, rate limiting, standardized errors, health/version endpoints, tests, and live documentation.
+The foundation includes request tracing, CORS, API-key authentication, rate limiting, standardized errors, health/version endpoints, tests, and live documentation. Phase 2 adds schema-validated TVmaze TV metadata, search, seasons, episodes, images, and airing schedules.
 
 ## Quick start
 
