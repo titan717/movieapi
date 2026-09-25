@@ -36,7 +36,7 @@ export function createPlaybackRoutes(provider: VidSrcProvider) {
     if (!id.success) return errorResponse(c, "INVALID_MEDIA_ID", "Movie TMDB ID must be a positive integer.", 400, c.get("requestId"));
     try {
       const sources = provider.getMovieSources(id.data);
-      return sourcesResponse(c, "movie", sources[0] ?? null, { tmdbId: id.data });
+      return c.json({ success: true, data: { mediaType: "movie", source: sources[0] ?? null, tmdbId: id.data } });
     } catch (error) {
       return providerError(c, error);
     }
@@ -71,11 +71,7 @@ export function createPlaybackRoutes(provider: VidSrcProvider) {
     try {
       const { id, season, episode } = params.data;
       const sources = provider.getTvEpisodeSources(id, season, episode);
-      return sourcesResponse(c, "tv_episode", sources[0] ?? null, {
-        tmdbId: id,
-        season,
-        episode
-      });
+      return c.json({ success: true, data: { mediaType: "tv_episode", source: sources[0] ?? null, tmdbId: id, season, episode } });
     } catch (error) {
       return providerError(c, error);
     }
