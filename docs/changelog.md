@@ -2,6 +2,16 @@
 
 ## 2026-09-25
 
+### Phase 3 — TMDB fallback/enrichment
+- Added authenticated TMDB client using server-side Bearer authentication.
+- Added TMDB TV/movie search and details.
+- Added external-ID matching for TV fallback.
+- Added field-level TVmaze → TMDB fallback.
+- Preserved valid TVmaze fields during fallback.
+- Added normalized TMDB movie and TV models.
+- Added TMDB configuration.
+- Added Phase 3 tests.
+
 ### Phase 2 — TVmaze provider
 - Added schema-validated TVmaze client.
 - Added TV show search and normalization.
