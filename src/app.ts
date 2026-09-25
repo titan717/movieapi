@@ -19,8 +19,8 @@ const OPENAPI_YAML = [
   "openapi: 3.1.0",
   "info:",
   "  title: MovieApi",
-  "  version: 0.6.0",
-  "  description: Phase 5 discovery aggregation for Kinoma.",
+  "  version: 0.7.0",
+  "  description: Kinoma media API with discovery, videos, and playback.",
   "servers:",
   "  - url: /api/v1",
   "paths:",
@@ -178,7 +178,19 @@ const OPENAPI_YAML = [
   "      summary: Get schedule for a date",
   "      responses:",
   '        "200":',
-  "          description: Airing episodes for the date"
+  "          description: Airing episodes for the date",
+  "  /movie/{id}/sources:",
+  "    get:",
+  "      summary: Get movie playback sources",
+  "  /movie/{id}/play:",
+  "    get:",
+  "      summary: Get primary movie playback source",
+  "  /tv/{id}/season/{season}/episode/{episode}/sources:",
+  "    get:",
+  "      summary: Get TV episode playback sources",
+  "  /tv/{id}/season/{season}/episode/{episode}/play:",
+  "    get:",
+  "      summary: Get primary TV episode playback source"
 ].join("\\n") + "\\n";
 
 export function createApp(config: Config = loadConfig()) {
