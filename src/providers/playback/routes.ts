@@ -44,7 +44,7 @@ export function createPlaybackRoutes(provider: VidSrcProvider, resolveTvPlayback
     }
   });
 
-  app.get("/tv/:id/season/:season/episode/:episode/sources", (c) => {
+  app.get("/tv/:id/season/:season/episode/:episode/sources", async (c) => {
     const params = z.object({
       id: idSchema,
       season: z.coerce.number().int().positive(),
@@ -65,7 +65,7 @@ export function createPlaybackRoutes(provider: VidSrcProvider, resolveTvPlayback
     }
   });
 
-  app.get("/tv/:id/season/:season/episode/:episode/play", (c) => {
+  app.get("/tv/:id/season/:season/episode/:episode/play", async (c) => {
     const params = z.object({
       id: idSchema,
       season: z.coerce.number().int().nonnegative(),
