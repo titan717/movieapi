@@ -208,7 +208,14 @@ export function createApp(config: Config = loadConfig()) {
     exposeHeaders: ["X-Request-ID", "Retry-After"]
   }));
   app.use("*", rateLimitMiddleware(config));
-  app.use("/api/v1/*", authMiddleware(config));\n\n  app.use("*", async (c, next) => {\n    await next();\n    c.header("x-content-type-options", "nosniff");\n    c.header("referrer-policy", "strict-origin-when-cross-origin");\n    c.header("x-frame-options", "DENY");\n  });
+  app.use("/api/v1/*", authMiddleware(config));
+
+  app.use("*", async (c, next) => {
+    await next();
+    c.header("x-content-type-options", "nosniff");
+    c.header("referrer-policy", "strict-origin-when-cross-origin");
+    c.header("x-frame-options", "DENY");
+  });
 
   app.get("/", (c) => c.json({
     success: true,

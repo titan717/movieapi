@@ -50,7 +50,14 @@ const show = {
 };
 
 describe("MovieApi Phase 5", () => {
-  it("applies production-safe response headers", async () => {\n    const response = await createApp(base).request("/api/v1/health");\n    expect(response.headers.get("x-content-type-options")).toBe("nosniff");\n    expect(response.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");\n    expect(response.headers.get("x-frame-options")).toBe("DENY");\n  });\n\n  it("returns health with provider configuration state", async () => {
+  it("applies production-safe response headers", async () => {
+    const response = await createApp(base).request("/api/v1/health");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
+  });
+
+  it("returns health with provider configuration state", async () => {
     const response = await createApp(base).request("/api/v1/health");
     expect(response.status).toBe(200);
     const body = await response.json();
