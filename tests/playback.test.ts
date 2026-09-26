@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
+import { createPlaybackRoutes } from "../src/providers/playback/routes.js";
+import { VidSrcProvider } from "../src/providers/playback/vidsrc.js";
 import type { Config } from "../src/config.js";
 
 const base: Config = {
@@ -31,8 +33,21 @@ describe("MovieApi Phase 7 playback", () => {
     expect(body.data.sources[0].url).toBe("https://vidsrc.sh/embed/movie/11");
   });
 
+  it("resolves a TVMaze ID to a TMDB ID before playback", async () => {
+    const provider = new VidSrcProvider(base.vidsrc);
+    const app = createPlaybackRoutes(provider, async (id) => id === 169 ? 1396 : null);
+    const response = await app.request("/tv/169/season/1/episode/1/sources");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.tmdbId).toBe(1396);
+    expect(body.data.sources[0].url).toBe("https://vidsrc.sh/embed/tv/1396/1/1");
+  });
+
   it("returns an episode playback source", async () => {
-    const response = await createApp(base).request("/api/v1/tv/1399/season/1/episode/1/play");
+    const provider = new VidSrcProvider(base.vidsrc);
+    const app = createPlaybackRoutes(provider);
+    const response = await app.request("/tv/1399/season/1/episode/1/play");
     const body = await response.json();
 
     expect(response.status).toBe(200);
