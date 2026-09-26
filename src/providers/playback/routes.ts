@@ -18,7 +18,9 @@ function sourcesResponse(c: any, mediaType: "movie" | "tv_episode", sources: unk
   return c.json({ success: true, data: { mediaType, sources, ...extra } });
 }
 
-export function createPlaybackRoutes(provider: VidSrcProvider) {
+export type TvPlaybackIdResolver = (tvmazeId: number) => Promise<number | null>;
+
+export function createPlaybackRoutes(provider: VidSrcProvider, resolveTvPlaybackId?: TvPlaybackIdResolver) {
   const app = new Hono<AppEnv>();
 
   app.get("/movie/:id/sources", (c) => {
@@ -51,8 +53,10 @@ export function createPlaybackRoutes(provider: VidSrcProvider) {
     if (!params.success) return errorResponse(c, "INVALID_EPISODE_ID", "Invalid TV episode identifiers.", 400, c.get("requestId"));
     try {
       const { id, season, episode } = params.data;
-      return sourcesResponse(c, "tv_episode", provider.getTvEpisodeSources(id, season, episode), {
-        tmdbId: id,
+      const tmdbId = resolveTvPlaybackId ? await resolveTvPlaybackId(id) : id;
+      if (!tmdbId) return errorResponse(c, "MEDIA_NOT_FOUND", "Unable to resolve the TV show to a TMDB ID for playback.", 404, c.get("requestId"));
+      return sourcesResponse(c, "tv_episode", provider.getTvEpisodeSources(tmdbId, season, episode), {
+        tmdbId,
         season,
         episode
       });
@@ -70,8 +74,10 @@ export function createPlaybackRoutes(provider: VidSrcProvider) {
     if (!params.success) return errorResponse(c, "INVALID_EPISODE_ID", "Invalid TV episode identifiers.", 400, c.get("requestId"));
     try {
       const { id, season, episode } = params.data;
-      const sources = provider.getTvEpisodeSources(id, season, episode);
-      return c.json({ success: true, data: { mediaType: "tv_episode", source: sources[0] ?? null, tmdbId: id, season, episode } });
+      const tmdbId = resolveTvPlaybackId ? await resolveTvPlaybackId(id) : id;
+      if (!tmdbId) return errorResponse(c, "MEDIA_NOT_FOUND", "Unable to resolve the TV show to a TMDB ID for playback.", 404, c.get("requestId"));
+      const sources = provider.getTvEpisodeSources(tmdbId, season, episode);
+      return c.json({ success: true, data: { mediaType: "tv_episode", source: sources[0] ?? null, tmdbId, season, episode } });
     } catch (error) {
       return providerError(c, error);
     }
