@@ -47,9 +47,16 @@ function yearOf(value: string | null | undefined) {
 export async function findMatchingTmdbTv(show: TvmazeShow, client: TmdbClient): Promise<TmdbTvDetails | null> {
   if (!client.enabled) return null;
 
+  // IMDb is the strongest cross-provider identifier, but a failed /find lookup
+  // must not prevent the title-based fallback. Some TVMaze shows have an IMDb
+  // ID that TMDB does not know about.
   if (show.externals?.imdb) {
-    const found = await client.findByExternalId(show.externals.imdb);
-    if (found.tv_results?.[0]) return await client.getTv(found.tv_results[0].id);
+    try {
+      const found = await client.findByExternalId(show.externals.imdb);
+      if (found.tv_results?.[0]) return await client.getTv(found.tv_results[0].id);
+    } catch {
+      // Continue with TMDB title search below.
+    }
   }
 
   const search = await client.searchTv(show.name, 1);
