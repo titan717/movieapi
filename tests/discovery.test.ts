@@ -10,6 +10,7 @@ const base: Config = {
   tvmaze: { baseUrl: "https://api.tvmaze.com", userAgent: "MovieApi-test", timeoutMs: 1_000 },
   tmdb: { accessToken: "tmdb-test-token", baseUrl: "https://api.themoviedb.org/3", timeoutMs: 1_000 },
   vidsrc: { baseUrl: "https://vidsrc.sh" },
+  corsOrigin: "*",
   port: 3000
 };
 

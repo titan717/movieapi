@@ -18,6 +18,7 @@ const base: Config = {
     timeoutMs: 1_000
   },
   vidsrc: { baseUrl: "https://vidsrc.sh" },
+  corsOrigin: "*",
   port: 3000
 };
 
