@@ -55,7 +55,7 @@ export function createTmdbRoutes(client: TmdbClient) {
   app.get("/tv/:id/season/:season", async (c) => {
     const id = positiveInt(c.req.param("id"), 0, 2_147_483_647);
     const season = positiveInt(c.req.param("season"), 0, 1000);
-    if (!id || season === null) return errorResponse(c, "INVALID_EPISODE_ID", "TMDB TV ID and season must be valid positive integers.", 400, c.get("requestId"));
+    if (!id || season === null) return errorResponse(c, "INVALID_SEASON", "TMDB TV ID and season must be valid positive integers.", 400, c.get("requestId"));
     try {
       const result = await client.getTvSeason(id, season);
       return c.json({ success: true, data: {

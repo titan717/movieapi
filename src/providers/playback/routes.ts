@@ -45,7 +45,7 @@ export function createPlaybackRoutes(provider: VidSrcProvider) {
   app.get("/tv/:id/season/:season/episode/:episode/sources", (c) => {
     const params = z.object({
       id: idSchema,
-      season: z.coerce.number().int().nonnegative(),
+      season: z.coerce.number().int().positive(),
       episode: z.coerce.number().int().positive()
     }).safeParse(c.req.param());
     if (!params.success) return errorResponse(c, "INVALID_EPISODE_ID", "Invalid TV episode identifiers.", 400, c.get("requestId"));

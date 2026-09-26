@@ -5,7 +5,7 @@ import type { Config } from "../src/config.js";
 const base: Config = {
   apiKeys:new Set(["test-key"]), authRequired:false, rateLimit:100, rateWindowMs:60000,
   tvmaze:{baseUrl:"https://api.tvmaze.com",userAgent:"MovieApi-test",timeoutMs:1000},
-  tmdb:{accessToken:"tmdb-test-token",baseUrl:"https://api.themoviedb.org/3",timeoutMs:1000}, port:3000
+  tmdb:{accessToken:"tmdb-test-token",baseUrl:"https://api.themoviedb.org/3",timeoutMs:1000}, vidsrc:{baseUrl:"https://vidsrc.sh"}, port:3000
 };
 afterEach(()=>vi.unstubAllGlobals());
 

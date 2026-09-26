@@ -17,6 +17,7 @@ const base: Config = {
     baseUrl: "https://api.themoviedb.org/3",
     timeoutMs: 1_000
   },
+  vidsrc: { baseUrl: "https://vidsrc.sh" },
   port: 3000
 };
 
@@ -64,8 +65,8 @@ describe("MovieApi Phase 5", () => {
   it("returns current version", async () => {
     const response = await createApp(base).request("/api/v1/version");
     const body = await response.json();
-    expect(body.data.version).toBe("0.5.0");
-    expect(body.data.phase).toBe(5);
+    expect(body.data.version).toBe("0.7.0");
+    expect(body.data.phase).toBe(7);
   });
 
   it("serves docs and OpenAPI", async () => {
