@@ -31,7 +31,11 @@ export type Config = {
     baseUrl: string;
     timeoutMs: number;
   };
-  vidsrc: {\n    baseUrl?: string;\n  };\n  corsOrigin: string;\n  port: number;
+  vidsrc: {
+    baseUrl?: string;
+  };
+  corsOrigin: string;
+  port: number;
 };
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
@@ -57,6 +61,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       baseUrl: parsed.MOVIEAPI_TMDB_BASE_URL,
       timeoutMs: parsed.MOVIEAPI_TMDB_TIMEOUT_MS
     },
-    vidsrc: { baseUrl: parsed.MOVIEAPI_VIDSRC_BASE_URL },\n    corsOrigin: parsed.MOVIEAPI_CORS_ORIGIN,\n    port: parsed.PORT
+    vidsrc: { baseUrl: parsed.MOVIEAPI_VIDSRC_BASE_URL },
+    corsOrigin: parsed.MOVIEAPI_CORS_ORIGIN,
+    port: parsed.PORT
   };
 }
