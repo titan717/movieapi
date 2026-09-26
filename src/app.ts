@@ -191,7 +191,7 @@ const OPENAPI_YAML = [
   "  /tv/{id}/season/{season}/episode/{episode}/play:",
   "    get:",
   "      summary: Get primary TV episode playback source"
-].join("\\n") + "\\n";
+].join("\n") + "\n";
 
 export function createApp(config: Config = loadConfig()) {
   const app = new Hono<AppEnv>();
