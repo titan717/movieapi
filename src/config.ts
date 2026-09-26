@@ -30,6 +30,9 @@ export type Config = {
     baseUrl: string;
     timeoutMs: number;
   };
+  vidsrc: {
+    baseUrl?: string;
+  };
   port: number;
 };
 
