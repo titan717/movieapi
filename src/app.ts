@@ -302,27 +302,68 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/docs", (c) => c.html(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MovieApi Docs</title>
-<style>body{font-family:system-ui,sans-serif;max-width:960px;margin:40px auto;padding:0 20px;line-height:1.6;color:#18202a}code,pre{background:#f4f5f7;border-radius:8px}code{padding:2px 5px}pre{padding:16px;overflow:auto}.route{border:1px solid #dfe3e8;border-radius:12px;padding:16px;margin:12px 0}a{color:#135cc8}</style>
-</head><body><h1>MovieApi</h1><p>Phase 7 playback layer · v0.7.0</p>
-<p><a href="/openapi.yaml">OpenAPI specification</a></p>
-<div class="route"><strong>GET /api/v1/search?q=...</strong><br>Search normalized TV results.</div>
-<div class="route"><strong>GET /api/v1/tv/:id</strong><br>Show metadata.</div>
-<div class="route"><strong>GET /api/v1/tv/:id/seasons</strong><br>Season list.</div>
-<div class="route"><strong>GET /api/v1/tv/:id/episodes</strong><br>Paginated episode list.</div>
-<div class="route"><strong>GET /api/v1/tv/:id/season/:season</strong><br>Season episodes.</div>
-<div class="route"><strong>GET /api/v1/tv/:id/season/:season/episode/:episode</strong><br>Episode lookup.</div>
-<div class="route"><strong>GET /api/v1/airing?country=US&amp;date=YYYY-MM-DD</strong><br>Country/date schedule.</div>
-<div class="route"><strong>GET /api/v1/airing/today</strong><br>Today's schedule.</div>
-<div class="route"><strong>GET /api/v1/popular/movies</strong><br>Popular movies.</div>
-<div class="route"><strong>GET /api/v1/popular/tv</strong><br>Popular TV.</div>
-<div class="route"><strong>GET /api/v1/trending</strong><br>Trending movies and TV.</div>
-<div class="route"><strong>GET /api/v1/home</strong><br>Kinoma homepage discovery aggregation.</div>\n<div class="route"><strong>GET /api/v1/movie/:id/sources</strong><br>Movie playback sources.</div>\n<div class="route"><strong>GET /api/v1/movie/:id/play</strong><br>Primary movie playback source.</div>\n<div class="route"><strong>GET /api/v1/tv/:id/season/:season/episode/:episode/sources</strong><br>TV episode playback sources.</div>\n<div class="route"><strong>GET /api/v1/tv/:id/season/:season/episode/:episode/play</strong><br>Primary TV episode playback source.</div>
-<h2>Authentication</h2><p>When enabled, send <code>X-API-Key</code>.</p>
-<h2>Attribution</h2><p>TVmaze data is licensed under CC BY-SA. Kinoma must provide TVmaze attribution/link-back when using the public TVmaze API.</p>
-<h2>Success</h2><pre>{"success":true,"data":{}}</pre>
-<h2>Error</h2><pre>{"success":false,"error":{"code":"INVALID_REQUEST","message":"...","requestId":"..."}}</pre>
-</body></html>`));
+<title>Panda.fun API Docs</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8e8ec;background:#0b0c10}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0%,#171925,transparent 40%),#0b0c10}
+header{position:sticky;top:0;z-index:5;border-bottom:1px solid #242631;background:rgba(11,12,16,.88);backdrop-filter:blur(18px)}
+.wrap{max-width:1180px;margin:auto;padding:0 22px}.top{display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:72px}
+.brand{font-weight:800;font-size:22px;letter-spacing:-.04em}.brand span{opacity:.5;font-weight:600}.links a{color:#b9bac5;text-decoration:none;margin-left:18px;font-size:14px}
+main{padding:44px 0 80px}.hero{padding:12px 0 28px}.eyebrow{font-size:12px;letter-spacing:.14em;color:#8f92a2;font-weight:700}.hero h1{font-size:46px;line-height:1.02;margin:10px 0}.hero p{color:#a8aab5;max-width:720px;line-height:1.7}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 30px}button,.method{border:1px solid #30323e;background:#151720;color:#eee;border-radius:9px;padding:9px 12px;cursor:pointer}button:hover{border-color:#55596b}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.route{border:1px solid #272936;border-radius:16px;background:rgba(20,21,29,.75);overflow:hidden}
+.route-head{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid #272936}.method{font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;padding:5px 8px}.get{color:#9ec5ff}.path{font:600 14px ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}.summary{padding:12px 16px;color:#a8aab5;font-size:14px}
+.try{padding:0 16px 16px}.row{display:flex;gap:8px;align-items:center}.row input{flex:1;min-width:0;background:#0e0f15;border:1px solid #30323e;border-radius:9px;color:#fff;padding:9px 10px}.result{margin-top:10px;background:#08090d;border:1px solid #242631;border-radius:10px;padding:12px;max-height:300px;overflow:auto;white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfd1da}
+section{margin-top:38px}h2{font-size:22px}pre{background:#08090d;border:1px solid #242631;border-radius:12px;padding:16px;overflow:auto;color:#cfd1da}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.hero h1{font-size:36px}.links{display:none}}
+</style></head><body>
+<header><div class="wrap top"><div class="brand">panda.fun <span>API</span></div><div class="links"><a href="/openapi.yaml">OpenAPI</a><a href="/api/v1/health">Health</a></div></div></header>
+<main class="wrap"><div class="hero"><div class="eyebrow">DEVELOPER DOCUMENTATION · V0.7.0</div><h1>Panda.fun API</h1><p>Interactive documentation for Panda.fun's media API. Every endpoint below can be tested directly from this page. Responses are shown exactly as returned by the API.</p></div>
+<div class="toolbar"><button onclick="document.querySelectorAll('.result').forEach(x=>x.textContent='')">Clear responses</button><button onclick="window.open('/openapi.yaml','_blank')">View OpenAPI</button></div>
+<div id="routes" class="grid"></div>
+<section><h2>Response format</h2><pre>{"success":true,"data":{}}</pre><pre>{"success":false,"error":{"code":"INVALID_REQUEST","message":"...","requestId":"..."}}</pre></section>
+<section><h2>Authentication</h2><p style="color:#a8aab5">If API authentication is enabled, add your X-API-Key in the request headers from your application. This browser documentation page does not persist or store keys.</p></section>
+<section><h2>Attribution</h2><p style="color:#a8aab5">TVmaze data is licensed under CC BY-SA. Applications using TVmaze data should provide the required attribution and link-back.</p></section>
+</main>
+<script>
+const routes=[
+["GET","/api/v1/health","API health"],
+["GET","/api/v1/version","API version"],
+["GET","/api/v1/search?q=Breaking%20Bad","Search TV shows"],
+["GET","/api/v1/tv/169","TV show details"],
+["GET","/api/v1/tv/169/seasons","TV seasons"],
+["GET","/api/v1/tv/169/season/1","Season episodes"],
+["GET","/api/v1/tv/169/season/1/episode/1","Episode lookup"],
+["GET","/api/v1/tmdb/search/movie?q=Inception","Search movies"],
+["GET","/api/v1/tmdb/search/tv?q=Breaking%20Bad","Search TV"],
+["GET","/api/v1/tmdb/movie/27205","Movie details"],
+["GET","/api/v1/tmdb/tv/1396","TMDB TV details"],
+["GET","/api/v1/trending","Trending"],
+["GET","/api/v1/popular/movies","Popular movies"],
+["GET","/api/v1/popular/tv","Popular TV"],
+["GET","/api/v1/home","Panda.fun homepage aggregation"],
+["GET","/api/v1/movie/27205/sources","Movie playback sources"],
+["GET","/api/v1/movie/27205/play","Movie playback"],
+["GET","/api/v1/tv/47199/season/1/episode/1/sources","TV episode playback sources"],
+["GET","/api/v1/tv/47199/season/1/episode/1/play","TV episode playback"]
+];
+const root=document.getElementById("routes");
+for(const [method,path,summary] of routes){
+ const card=document.createElement("article"); card.className="route";
+ const head=document.createElement("div"); head.className="route-head";
+ const badge=document.createElement("span"); badge.className="method get"; badge.textContent=method;
+ const p=document.createElement("code"); p.className="path"; p.textContent=path;
+ head.append(badge,p); card.append(head);
+ const desc=document.createElement("div"); desc.className="summary"; desc.textContent=summary; card.append(desc);
+ const area=document.createElement("div"); area.className="try";
+ const row=document.createElement("div"); row.className="row";
+ const input=document.createElement("input"); input.value=path; input.setAttribute("aria-label","Endpoint");
+ const btn=document.createElement("button"); btn.textContent="Try it";
+ const result=document.createElement("pre"); result.className="result";
+ btn.onclick=async()=>{result.textContent="Loading…";try{const r=await fetch(input.value);const t=await r.text();let body;try{body=JSON.stringify(JSON.parse(t),null,2)}catch{body=t}result.textContent=r.status+" "+r.statusText+"\n\n"+body}catch(e){result.textContent="Request failed: "+e}};
+ row.append(input,btn); area.append(row,result); card.append(area); root.append(card);
+}
+</script></body></html>`));
 
   app.get("/openapi.yaml", (c) => {
     c.header("content-type", "application/yaml; charset=utf-8");
