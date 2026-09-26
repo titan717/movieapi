@@ -41,6 +41,22 @@ export const tmdbTvDetailsSchema = z.object({
   origin_country: z.array(z.string()).optional(), number_of_episodes: z.number().int().optional(), number_of_seasons: z.number().int().optional()
 }).passthrough();
 
+
+export const tmdbTvSeasonSchema = z.object({
+  id: z.number().int(),
+  season_number: z.number().int(),
+  name: z.string().optional(),
+  overview: z.string().optional(),
+  poster_path: imagePath,
+  air_date: z.string().optional(),
+  episode_count: z.number().int().optional(),
+  episodes: z.array(z.object({
+    id: z.number().int(), episode_number: z.number().int(), season_number: z.number().int().optional(),
+    name: z.string().optional(), overview: z.string().optional(), air_date: z.string().optional(),
+    runtime: z.number().int().nullable().optional(), still_path: imagePath, vote_average: z.number().optional()
+  }).passthrough()).optional()
+}).passthrough();
+
 export const tmdbMovieDetailsSchema = z.object({
   id: z.number().int(), title: z.string(), original_title: z.string().optional(), overview: z.string().optional(),
   release_date: z.string().optional(), poster_path: imagePath, backdrop_path: imagePath, vote_average: z.number().optional(),
