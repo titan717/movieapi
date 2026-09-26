@@ -203,12 +203,12 @@ export function createApp(config: Config = loadConfig()) {
 
   app.use("*", requestId);
   app.use("*", cors({
-    origin: "*",
+    origin: config.corsOrigin,
     allowHeaders: ["Content-Type", "X-API-Key", "X-Request-ID"],
     exposeHeaders: ["X-Request-ID", "Retry-After"]
   }));
   app.use("*", rateLimitMiddleware(config));
-  app.use("/api/v1/*", authMiddleware(config));
+  app.use("/api/v1/*", authMiddleware(config));\n\n  app.use("*", async (c, next) => {\n    await next();\n    c.header("x-content-type-options", "nosniff");\n    c.header("referrer-policy", "strict-origin-when-cross-origin");\n    c.header("x-frame-options", "DENY");\n  });
 
   app.get("/", (c) => c.json({
     success: true,
