@@ -9,6 +9,7 @@ import { log } from "./logger.js";
 import { TvmazeClient, TvmazeProviderError, createTvmazeRoutes, createTvmazeScheduleRoutes } from "./providers/tvmaze/index.js";
 import { TmdbClient, createTmdbRoutes } from "./providers/tmdb/index.js";
 import { normalizeShow } from "./providers/tvmaze/normalizer.js";
+import { findMatchingTmdbTv } from "./providers/tvmaze/fallback.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
 import { VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
@@ -243,7 +244,20 @@ export function createApp(config: Config = loadConfig()) {
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
-  app.route("/api/v1", createPlaybackRoutes(playback));
+  app.route("/api/v1", createPlaybackRoutes(playback, async (tvmazeId) => {
+    if (!tmdb.enabled) return null;
+    try {
+      const show = await tvmaze.getShow(tvmazeId);
+      const match = await findMatchingTmdbTv(show, tmdb);
+      return match?.id ?? null;
+    } catch (error) {
+      log("warn", "playback_id_resolution_failed", {
+        tvmazeId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }));
 
   app.get("/api/v1/search", async (c) => {
     const q = c.req.query("q")?.trim();
