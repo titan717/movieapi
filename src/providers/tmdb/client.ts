@@ -47,7 +47,7 @@ export class TmdbClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const response = await fetch(`${this.baseUrl}${path}`, { headers: { accept: "application/json", authorization: `Bearer ${this.accessToken}`, "user-agent": "MovieApi/0.5.0 (Kinoma)" }, signal: controller.signal });
+      const response = await fetch(`${this.baseUrl}${path}`, { headers: { accept: "application/json", authorization: `Bearer ${this.accessToken}`, "user-agent": "MovieApi/0.7.0 (Kinoma)" }, signal: controller.signal });
       if (response.status === 401 || response.status === 403) throw new TmdbProviderError("TMDB authentication failed.", "UNAUTHORIZED", response.status);
       if (response.status === 404) throw new TmdbProviderError("TMDB resource was not found.", "NOT_FOUND", 404);
       if (response.status === 429) throw new TmdbProviderError("TMDB rate limit was reached.", "RATE_LIMIT", 429);
