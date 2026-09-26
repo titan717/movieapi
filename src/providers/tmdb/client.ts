@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CircuitBreaker, MemoryCache, ProviderHealth, isRetryableProviderError, withRetry } from "../../reliability.js";
-import { tmdbFindSchema, tmdbGenresSchema, tmdbMovieDetailsSchema, tmdbMovieListSchema, tmdbSearchMovieSchema, tmdbSearchTvSchema, tmdbTrendingSchema, tmdbTvDetailsSchema, tmdbTvListSchema, type TmdbMovieDetails, type TmdbTvDetails } from "./schemas.js";
+import { tmdbFindSchema, tmdbGenresSchema, tmdbMovieDetailsSchema, tmdbMovieListSchema, tmdbSearchMovieSchema, tmdbSearchTvSchema, tmdbTrendingSchema, tmdbTvDetailsSchema, tmdbTvListSchema, tmdbTvSeasonSchema, type TmdbMovieDetails, type TmdbTvDetails } from "./schemas.js";
 
 export const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 export type TmdbClientOptions = { accessToken?: string; baseUrl?: string; timeoutMs?: number };
@@ -115,6 +115,9 @@ export class TmdbClient {
   }
   getMovie(id: number): Promise<TmdbMovieDetails> {
     return this.get(`/movie/${id}`, tmdbMovieDetailsSchema, 600_000, 3_600_000);
+  }
+  getTvSeason(id: number, season: number): Promise<z.infer<typeof tmdbTvSeasonSchema>> {
+    return this.get(`/tv/${id}/season/${season}`, tmdbTvSeasonSchema, 600_000, 3_600_000);
   }
   findByExternalId(externalId: string, externalSource = "imdb_id") {
     return this.get(`/find/${encodeURIComponent(externalId)}?external_source=${encodeURIComponent(externalSource)}`, tmdbFindSchema, 300_000, 900_000);
