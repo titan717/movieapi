@@ -52,6 +52,37 @@ export function createTmdbRoutes(client: TmdbClient) {
     }
   });
 
+  app.get("/tv/:id/season/:season", async (c) => {
+    const id = positiveInt(c.req.param("id"), 0, 2_147_483_647);
+    const season = positiveInt(c.req.param("season"), 0, 1000);
+    if (!id || season === null) return errorResponse(c, "INVALID_EPISODE_ID", "TMDB TV ID and season must be valid positive integers.", 400, c.get("requestId"));
+    try {
+      const result = await client.getTvSeason(id, season);
+      return c.json({ success: true, data: {
+        id: result.id,
+        seasonNumber: result.season_number,
+        name: result.name ?? "Season " + result.season_number,
+        overview: result.overview ?? null,
+        poster: result.poster_path ?? null,
+        airDate: result.air_date ?? null,
+        episodeCount: result.episode_count ?? result.episodes?.length ?? 0,
+        episodes: (result.episodes ?? []).map((episode) => ({
+          id: episode.id,
+          number: episode.episode_number,
+          season: episode.season_number ?? result.season_number,
+          title: episode.name ?? "Episode " + episode.episode_number,
+          synopsis: episode.overview ?? null,
+          airDate: episode.air_date ?? null,
+          runtime: episode.runtime ?? null,
+          image: episode.still_path ? "https://image.tmdb.org/t/p/original" + episode.still_path : null,
+          rating: episode.vote_average ?? null
+        }))
+      } });
+    } catch (error) {
+      return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
+    }
+  });
+
   app.get("/search/tv", async (c) => {
     const q = c.req.query("q")?.trim();
     if (!q) return errorResponse(c, "INVALID_REQUEST", "Query parameter q is required.", 400, c.get("requestId"));
