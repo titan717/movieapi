@@ -4,7 +4,7 @@ MovieApi is the backend service layer for Panda.fun, providing a stable, normali
 
 ## Status
 
-**Phase 8 — playback source contract and direct-source fallback architecture implemented.**
+**Phase 9 — authorized VidCore resolver integration with VidSrc fallback implemented.**
 
 Phase 4 adds bounded provider caching, stale-cache refresh, retries with jitter, circuit breakers, and provider health telemetry. Phase 5 adds provider-independent discovery aggregation, pagination, genres, recommendations, trending, airing, and a Panda.fun-oriented home response.
 
@@ -39,7 +39,7 @@ Run verification:
       +-- Search
       +-- Discovery
       +-- Trailers
-      +-- Playback -> provider resolver -> direct source when authorized -> VidSrc embed fallback
+      +-- Playback -> authorized VidCore resolver -> HLS proxy source -> VidSrc embed fallback
       |
       v
     Cache / Reliability / Health / Monitoring
@@ -77,9 +77,22 @@ A phase is not considered complete until its implementation, tests, documentatio
 
 - TVmaze: primary metadata provider.
 - TMDB: fallback and field-level metadata enrichment.
-- VidSrc: separate playback provider.
+- VidCore: separately hosted authorized playback resolver, consumed through its HTTP API.
+- VidSrc: embed playback fallback.
 
 Provider adapters remain replaceable so additional authorized providers can be added later.
+
+## VidCore integration
+
+MovieAPI connects to a separately hosted VidCore resolver through its documented `/api/resolve` HTTP interface. MovieAPI consumes the resolver's browser-facing `play` HLS relay URL and does not duplicate the resolver implementation.
+
+Configuration:
+
+- `MOVIEAPI_VIDCORE_BASE_URL`
+- `MOVIEAPI_VIDCORE_SERVERS`
+- `MOVIEAPI_VIDCORE_TIMEOUT_MS`
+
+The resolver should run as a persistent Node service rather than as a MovieAPI/Vercel function. Keep its HLS proxy endpoint reachable by Panda.fun when direct browser playback requires it.
 
 ## Safety boundary
 
