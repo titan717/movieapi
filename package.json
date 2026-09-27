@@ -1,8 +1,8 @@
 {
   "name": "movieapi",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
-  "description": "Kinoma media metadata and playback API",
+  "description": "Panda.fun media metadata and playback API",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
