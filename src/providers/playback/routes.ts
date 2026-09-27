@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { errorResponse } from "../../errors.js";
-import { VidSrcProvider, VidSrcProviderError } from "./vidsrc.js";
+import { VidSrcProviderError } from "./vidsrc.js";
+import type { PlaybackProvider } from "./provider.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -20,7 +21,7 @@ function sourcesResponse(c: any, mediaType: "movie" | "tv_episode", sources: unk
 
 export type TvPlaybackIdResolver = (tvmazeId: number) => Promise<number | null>;
 
-export function createPlaybackRoutes(provider: VidSrcProvider, resolveTvPlaybackId?: TvPlaybackIdResolver) {
+export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlaybackId?: TvPlaybackIdResolver) {
   const app = new Hono<AppEnv>();
 
   app.get("/movie/:id/sources", (c) => {
