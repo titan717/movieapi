@@ -20,7 +20,7 @@ const OPENAPI_YAML = [
   "openapi: 3.1.0",
   "info:",
   "  title: MovieApi",
-  "  version: 0.8.0",
+  "  version: 0.9.0",
   "  description: Panda.fun media API with discovery, videos, and authorized playback.",
   "servers:",
   "  - url: /api/v1",
