@@ -8,6 +8,6 @@ export type PlaybackProvider = {
     configured: boolean;
     mode: "direct" | "embed" | "hybrid";
   };
-  getMovieSources(tmdbId: number): PlaybackSource[];
-  getTvEpisodeSources(tmdbId: number, season: number, episode: number): PlaybackSource[];
+  getMovieSources(tmdbId: number): PlaybackSource[] | Promise<PlaybackSource[]>;
+  getTvEpisodeSources(tmdbId: number, season: number, episode: number): PlaybackSource[] | Promise<PlaybackSource[]>;
 };
