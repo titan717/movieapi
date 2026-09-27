@@ -203,10 +203,10 @@ export function createApp(config: Config = loadConfig()) {
   const vidcore = new VidCoreResolver(config.vidcore);
   const playback = new VidSrcProvider({
     ...config.vidsrc,
-    directResolver: {
+    directResolver: vidcore.enabled ? {
       resolveMovie: (tmdbId) => vidcore.resolveMovie(tmdbId),
       resolveTvEpisode: (tmdbId, season, episode) => vidcore.resolveTvEpisode(tmdbId, season, episode)
-    }
+    } : undefined
   });
 
   app.use("*", requestId);
