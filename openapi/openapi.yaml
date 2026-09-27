@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MovieApi
-  version: 0.7.0
+  version: 0.9.0
   description: Panda.fun media API with metadata, reliability, discovery, videos, and provider-independent playback.
 servers:
   - url: /api/v1
@@ -369,10 +369,11 @@ components:
             message: { type: string }
             requestId: { type: string }
 
-# Phase 8 playback source contract
+# Phase 9 playback source contract
 # A playback response includes data.mode:
 # - direct: one or more direct media sources
 # - embed: provider embed only
 # - hybrid: direct source plus provider embed fallback
 # The first source returned by /play is the preferred source.
 # Direct sources must come from a documented or authorized provider interface.
+# VidCore sources are obtained through the separately hosted resolver HTTP API and its play HLS relay URL.
