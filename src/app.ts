@@ -235,7 +235,7 @@ export function createApp(config: Config = loadConfig()) {
     data: {
       status: "healthy",
       service: "movieapi",
-      version: "0.7.0",
+      version: "0.9.0",
       timestamp: new Date().toISOString(),
       providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth(), vidsrc: playback.getHealth(), vidcore: vidcore.getHealth() }
     }
