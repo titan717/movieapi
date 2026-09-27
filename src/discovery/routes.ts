@@ -116,7 +116,10 @@ export function createDiscoveryRoutes(service: DiscoveryService) {
   });
 
   app.get("/home", async (c) => {
-    try { return c.json({ success: true, data: await service.home() }); }
+    try {
+      c.header("Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+      return c.json({ success: true, data: await service.home() });
+    }
     catch (error) { return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unable to build discovery home.", 500, c.get("requestId")); }
   });
 
