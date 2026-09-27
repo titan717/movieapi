@@ -20,8 +20,8 @@ const OPENAPI_YAML = [
   "openapi: 3.1.0",
   "info:",
   "  title: MovieApi",
-  "  version: 0.7.0",
-  "  description: Kinoma media API with discovery, videos, and playback.",
+  "  version: 0.8.0",
+  "  description: Panda.fun media API with discovery, videos, and playback.",
   "servers:",
   "  - url: /api/v1",
   "paths:",
@@ -77,7 +77,7 @@ const OPENAPI_YAML = [
   "      summary: Recommendations",
   "  /home:",
   "    get:",
-  "      summary: Kinoma homepage discovery aggregation",
+  "      summary: Panda.fun homepage discovery aggregation",
   "  /search:",
   "    get:",
   "      summary: Search TV shows",
@@ -182,16 +182,16 @@ const OPENAPI_YAML = [
   "          description: Airing episodes for the date",
   "  /movie/{id}/sources:",
   "    get:",
-  "      summary: Get movie playback sources",
+  "      summary: Get movie playback sources with direct-source preference and embed fallback",
   "  /movie/{id}/play:",
   "    get:",
-  "      summary: Get primary movie playback source",
+  "      summary: Get preferred movie playback source",
   "  /tv/{id}/season/{season}/episode/{episode}/sources:",
   "    get:",
-  "      summary: Get TV episode playback sources",
+  "      summary: Get TV episode playback sources with direct-source preference and embed fallback",
   "  /tv/{id}/season/{season}/episode/{episode}/play:",
   "    get:",
-  "      summary: Get primary TV episode playback source"
+  "      summary: Get preferred TV episode playback source"
 ].join("\n") + "\n";
 
 export function createApp(config: Config = loadConfig()) {
@@ -236,7 +236,7 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/api/v1/version", (c) => c.json({
     success: true,
-    data: { version: "0.7.0", apiVersion: "v1", phase: 7 }
+    data: { version: "0.8.0", apiVersion: "v1", phase: 8 }
   }));
 
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));
