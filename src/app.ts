@@ -12,7 +12,7 @@ import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 import { findMatchingTmdbTv } from "./providers/tvmaze/fallback.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
-import { VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
+import { VidCoreResolver, VidSrcProvider, createPlaybackRoutes } from "./providers/playback/index.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -200,7 +200,14 @@ export function createApp(config: Config = loadConfig()) {
   const tmdb = new TmdbClient(config.tmdb);
   const discovery = new DiscoveryService(tmdb, tvmaze);
   const tmdbVideos = new TmdbVideoClient(config.tmdb);
-  const playback = new VidSrcProvider(config.vidsrc);
+  const vidcore = new VidCoreResolver(config.vidcore);
+  const playback = new VidSrcProvider({
+    ...config.vidsrc,
+    directResolver: {
+      resolveMovie: (tmdbId) => vidcore.resolveMovie(tmdbId),
+      resolveTvEpisode: (tmdbId, season, episode) => vidcore.resolveTvEpisode(tmdbId, season, episode)
+    }
+  });
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -220,7 +227,7 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/", (c) => c.json({
     success: true,
-    data: { name: "MovieApi", version: "0.7.0", status: "playback" }
+    data: { name: "MovieApi", version: "0.9.0", status: "playback" }
   }));
 
   app.get("/api/v1/health", (c) => c.json({
@@ -230,13 +237,13 @@ export function createApp(config: Config = loadConfig()) {
       service: "movieapi",
       version: "0.7.0",
       timestamp: new Date().toISOString(),
-      providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth(), vidsrc: playback.getHealth() }
+      providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth(), vidsrc: playback.getHealth(), vidcore: vidcore.getHealth() }
     }
   }));
 
   app.get("/api/v1/version", (c) => c.json({
     success: true,
-    data: { version: "0.8.0", apiVersion: "v1", phase: 8 }
+    data: { version: "0.9.0", apiVersion: "v1", phase: 9 }
   }));
 
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));
