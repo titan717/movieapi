@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../../errors.js";
 import { TmdbClient, TmdbProviderError } from "./client.js";
-import { normalizeTmdbMovie, normalizeTmdbTv } from "./normalizer.js";
+import { normalizeTmdbMovie, normalizeTmdbTv, normalizeTmdbMovieResult, normalizeTmdbTvResult } from "./normalizer.js";
+import type { TvmazeClient } from "../tvmaze/client.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -29,7 +30,7 @@ function providerError(c: Context<AppEnv>, error: unknown) {
   return errorResponse(c, code, message, status, c.get("requestId"));
 }
 
-export function createTmdbRoutes(client: TmdbClient) {
+export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient) {
   const app = new Hono<AppEnv>();
 
   app.get("/movie/:id", async (c) => {
@@ -46,7 +47,23 @@ export function createTmdbRoutes(client: TmdbClient) {
     const id = positiveInt(c.req.param("id"), 0, 2_147_483_647);
     if (!id) return errorResponse(c, "INVALID_MEDIA_ID", "TMDB TV ID must be a positive integer.", 400, c.get("requestId"));
     try {
-      return c.json({ success: true, data: normalizeTmdbTv(await client.getTv(id)) });
+      const show = await client.getTv(id);
+      let tvmazeId: number | null = null;
+      if (tvmaze) {
+        try {
+          const year = show.first_air_date ? Number(show.first_air_date.slice(0, 4)) : null;
+          const matches = await tvmaze.searchShows(show.name);
+          const exact = matches.find((match) => {
+            const candidateYear = match.show.premiered ? Number(match.show.premiered.slice(0, 4)) : null;
+            return match.show.name.toLowerCase() === show.name.toLowerCase() &&
+              (!year || !candidateYear || year === candidateYear);
+          });
+          tvmazeId = exact?.show.id ?? null;
+        } catch {
+          tvmazeId = null;
+        }
+      }
+      return c.json({ success: true, data: normalizeTmdbTv(show, tvmazeId) });
     } catch (error) {
       return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
     }
