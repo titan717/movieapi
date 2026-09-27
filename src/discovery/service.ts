@@ -217,17 +217,22 @@ export class DiscoveryService {
   }
 
   async home() {
-    const [featured, trending, popularMovies, popularTv, latestMovies, latestTv] = await Promise.all([
-      this.featured(), this.trending("day"), this.popularMovies(1), this.popularTv(1), this.latestMovies(1), this.latestTv(1)
+    const [trending, popularMovies, popularTv, latestMovies, latestTv] = await Promise.all([
+      this.trending("day"),
+      this.popularMovies(1),
+      this.popularTv(1),
+      this.latestMovies(1),
+      this.latestTv(1)
     ]);
+    const limit = 8;
     return {
-      featured: featured.item,
+      featured: trending.results[0] ?? null,
       sections: {
-        trending: trending.results,
-        popularMovies: popularMovies.results,
-        popularTv: popularTv.results,
-        latestMovies: latestMovies.results,
-        latestTv: latestTv.results
+        trending: trending.results.slice(0, limit),
+        popularMovies: popularMovies.results.slice(0, limit),
+        popularTv: popularTv.results.slice(0, limit),
+        latestMovies: latestMovies.results.slice(0, limit),
+        latestTv: latestTv.results.slice(0, limit)
       },
       generatedAt: new Date().toISOString()
     };
