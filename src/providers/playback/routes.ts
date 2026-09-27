@@ -28,7 +28,7 @@ export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlayba
     const id = idSchema.safeParse(c.req.param("id"));
     if (!id.success) return errorResponse(c, "INVALID_MEDIA_ID", "Movie TMDB ID must be a positive integer.", 400, c.get("requestId"));
     try {
-      return sourcesResponse(c, "movie", provider.getMovieSources(id.data), { tmdbId: id.data });
+      return sourcesResponse(c, "movie", await provider.getMovieSources(id.data), { tmdbId: id.data });
     } catch (error) {
       return providerError(c, error);
     }
@@ -57,7 +57,7 @@ export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlayba
       const explicitTmdbId = Number(c.req.query("tmdbId") || 0);
       const tmdbId = explicitTmdbId > 0 ? explicitTmdbId : (resolveTvPlaybackId ? await resolveTvPlaybackId(id) : id);
       if (!tmdbId) return errorResponse(c, "MEDIA_NOT_FOUND", "Unable to resolve the TV show to a TMDB ID for playback.", 404, c.get("requestId"));
-      return sourcesResponse(c, "tv_episode", provider.getTvEpisodeSources(tmdbId, season, episode), {
+      return sourcesResponse(c, "tv_episode", await provider.getTvEpisodeSources(tmdbId, season, episode), {
         tmdbId,
         season,
         episode
