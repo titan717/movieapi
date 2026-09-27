@@ -240,7 +240,7 @@ export function createApp(config: Config = loadConfig()) {
   }));
 
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));
-  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb));
+  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
