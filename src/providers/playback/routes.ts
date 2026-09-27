@@ -74,7 +74,7 @@ export function createPlaybackRoutes(provider: VidSrcProvider, resolveTvPlayback
     if (!params.success) return errorResponse(c, "INVALID_EPISODE_ID", "Invalid TV episode identifiers.", 400, c.get("requestId"));
     try {
       const { id, season, episode } = params.data;
-      const tmdbId = resolveTvPlaybackId ? await resolveTvPlaybackId(id) : id;
+      const explicitTmdbId = Number(c.req.query("tmdbId") || 0);\n      const tmdbId = explicitTmdbId > 0 ? explicitTmdbId : (resolveTvPlaybackId ? await resolveTvPlaybackId(id) : id);
       if (!tmdbId) return errorResponse(c, "MEDIA_NOT_FOUND", "Unable to resolve the TV show to a TMDB ID for playback.", 404, c.get("requestId"));
       const sources = provider.getTvEpisodeSources(tmdbId, season, episode);
       return c.json({ success: true, data: { mediaType: "tv_episode", source: sources[0] ?? null, tmdbId, season, episode } });
