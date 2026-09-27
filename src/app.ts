@@ -21,7 +21,7 @@ const OPENAPI_YAML = [
   "info:",
   "  title: MovieApi",
   "  version: 0.8.0",
-  "  description: Panda.fun media API with discovery, videos, and playback.",
+  "  description: Panda.fun media API with discovery, videos, and authorized playback.",
   "servers:",
   "  - url: /api/v1",
   "paths:",
@@ -325,7 +325,7 @@ section{margin-top:38px}h2{font-size:22px}pre{background:#08090d;border:1px soli
 @media(max-width:760px){.grid{grid-template-columns:1fr}.hero h1{font-size:36px}.links{display:none}}
 </style></head><body>
 <header><div class="wrap top"><div class="brand">panda.fun <span>API</span></div><div class="links"><a href="/openapi.yaml">OpenAPI</a><a href="/api/v1/health">Health</a></div></div></header>
-<main class="wrap"><div class="hero"><div class="eyebrow">DEVELOPER DOCUMENTATION · V0.7.0</div><h1>Panda.fun API</h1><p>Interactive documentation for Panda.fun's media API. Every endpoint below can be tested directly from this page. Responses are shown exactly as returned by the API.</p></div>
+<main class="wrap"><div class="hero"><div class="eyebrow">DEVELOPER DOCUMENTATION · V0.9.0</div><h1>Panda.fun API</h1><p>Interactive documentation for Panda.fun's media API. Every endpoint below can be tested directly from this page. Responses are shown exactly as returned by the API.</p></div>
 <div class="toolbar"><button onclick="document.querySelectorAll('.result').forEach(x=>x.textContent='')">Clear responses</button><button onclick="window.open('/openapi.yaml','_blank')">View OpenAPI</button></div>
 <div id="routes" class="grid"></div>
 <section><h2>Response format</h2><pre>{"success":true,"data":{}}</pre><pre>{"success":false,"error":{"code":"INVALID_REQUEST","message":"...","requestId":"..."}}</pre></section>
