@@ -107,6 +107,7 @@ export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient) {
     if (page === null) return errorResponse(c, "INVALID_REQUEST", "page must be a positive integer.", 400, c.get("requestId"));
     try {
       const result = await client.searchTv(q, page);
+      c.header("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       return c.json({ success: true, data: { ...result, source: "tmdb" } });
     } catch (error) {
       return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
@@ -120,6 +121,7 @@ export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient) {
     if (page === null) return errorResponse(c, "INVALID_REQUEST", "page must be a positive integer.", 400, c.get("requestId"));
     try {
       const result = await client.searchMovie(q, page);
+      c.header("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       return c.json({ success: true, data: { ...result, source: "tmdb" } });
     } catch (error) {
       return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
