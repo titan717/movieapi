@@ -6,13 +6,13 @@ export function tmdbImage(path: string | null | undefined, size = "original") {
   return path ? `${TMDB_IMAGE_BASE}/${size}${path}` : null;
 }
 
-export function normalizeTmdbTv(show: TmdbTvDetails) {
+export function normalizeTmdbTv(show: TmdbTvDetails, tvmazeId: number | null = null) {
   return { id: `kinoma_tmdb_tv_${show.id}`, type: "tv", title: show.name, originalTitle: show.original_name ?? show.name,
     year: show.first_air_date ? Number(show.first_air_date.slice(0, 4)) || null : null, rating: show.vote_average ?? null,
     poster: tmdbImage(show.poster_path), backdrop: tmdbImage(show.backdrop_path), overview: show.overview || null,
     genres: show.genres?.map((genre) => genre.name) ?? [], runtime: show.episode_run_time?.[0] ?? null,
     releaseDate: show.first_air_date || null, status: show.status ?? null, language: show.original_language ?? null, numberOfEpisodes: show.number_of_episodes ?? null, numberOfSeasons: show.number_of_seasons ?? null,
-    ids: { tvmaze: null, tmdb: show.id, imdb: null }, source: "tmdb" };
+    ids: { tvmaze: tvmazeId, tmdb: show.id, imdb: null }, source: "tmdb" };
 }
 
 export function normalizeTmdbMovie(movie: TmdbMovieDetails) {
