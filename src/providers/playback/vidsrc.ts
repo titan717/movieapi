@@ -32,7 +32,9 @@ export class VidSrcProvider implements PlaybackProvider {
   get enabled() { return Boolean(this.baseUrl); }
 
   getHealth() {
-    return { provider: this.name, configured: this.enabled, mode: "hybrid" as const };
+    const hasDirectResolver = Boolean(this.directResolver?.resolveMovie || this.directResolver?.resolveTvEpisode);
+    const mode = hasDirectResolver ? "hybrid" : "embed";
+    return { provider: this.name, configured: this.enabled, mode } as const;
   }
 
   async getMovieSources(tmdbId: number): Promise<PlaybackSource[]> {
