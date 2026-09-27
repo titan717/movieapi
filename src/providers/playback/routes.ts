@@ -24,7 +24,7 @@ export type TvPlaybackIdResolver = (tvmazeId: number) => Promise<number | null>;
 export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlaybackId?: TvPlaybackIdResolver) {
   const app = new Hono<AppEnv>();
 
-  app.get("/movie/:id/sources", (c) => {
+  app.get("/movie/:id/sources", async (c) => {
     const id = idSchema.safeParse(c.req.param("id"));
     if (!id.success) return errorResponse(c, "INVALID_MEDIA_ID", "Movie TMDB ID must be a positive integer.", 400, c.get("requestId"));
     try {
@@ -34,11 +34,11 @@ export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlayba
     }
   });
 
-  app.get("/movie/:id/play", (c) => {
+  app.get("/movie/:id/play", async (c) => {
     const id = idSchema.safeParse(c.req.param("id"));
     if (!id.success) return errorResponse(c, "INVALID_MEDIA_ID", "Movie TMDB ID must be a positive integer.", 400, c.get("requestId"));
     try {
-      const sources = provider.getMovieSources(id.data);
+      const sources = await provider.getMovieSources(id.data);
       return c.json({ success: true, data: { mediaType: "movie", source: sources[0] ?? null, tmdbId: id.data } });
     } catch (error) {
       return providerError(c, error);
@@ -79,7 +79,7 @@ export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlayba
       const explicitTmdbId = Number(c.req.query("tmdbId") || 0);
       const tmdbId = explicitTmdbId > 0 ? explicitTmdbId : (resolveTvPlaybackId ? await resolveTvPlaybackId(id) : id);
       if (!tmdbId) return errorResponse(c, "MEDIA_NOT_FOUND", "Unable to resolve the TV show to a TMDB ID for playback.", 404, c.get("requestId"));
-      const sources = provider.getTvEpisodeSources(tmdbId, season, episode);
+      const sources = await provider.getTvEpisodeSources(tmdbId, season, episode);
       return c.json({ success: true, data: { mediaType: "tv_episode", source: sources[0] ?? null, tmdbId, season, episode } });
     } catch (error) {
       return providerError(c, error);
