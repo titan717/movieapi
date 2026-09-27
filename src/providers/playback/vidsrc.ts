@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { playbackSourceSchema, type PlaybackSource } from "./schemas.js";
+import type { PlaybackProvider } from "./provider.js";
 
 export type VidSrcOptions = {
   baseUrl?: string;
@@ -15,7 +15,8 @@ export class VidSrcProviderError extends Error {
   }
 }
 
-export class VidSrcProvider {
+export class VidSrcProvider implements PlaybackProvider {
+  readonly name = "vidsrc";
   private readonly baseUrl?: string;
 
   constructor(options: VidSrcOptions = {}) {
@@ -29,9 +30,9 @@ export class VidSrcProvider {
 
   getHealth() {
     return {
-      provider: "vidsrc",
+      provider: this.name,
       configured: this.enabled,
-      mode: "embed"
+      mode: "embed" as const
     };
   }
 
@@ -44,10 +45,13 @@ export class VidSrcProvider {
   }
 
   private movieSource(tmdbId: number): PlaybackSource {
-    if (!this.baseUrl) throw new VidSrcProviderError("VidSrc playback is not configured.", "UNCONFIGURED");
+    if (!this.baseUrl) {
+      throw new VidSrcProviderError("VidSrc playback is not configured.", "UNCONFIGURED");
+    }
+
     return playbackSourceSchema.parse({
       id: `vidsrc-movie-${tmdbId}`,
-      provider: "vidsrc",
+      provider: this.name,
       type: "embed",
       url: `${this.baseUrl}/embed/movie/${tmdbId}`,
       title: "VidSrc",
@@ -60,10 +64,13 @@ export class VidSrcProvider {
   }
 
   private tvEpisodeSource(tmdbId: number, season: number, episode: number): PlaybackSource {
-    if (!this.baseUrl) throw new VidSrcProviderError("VidSrc playback is not configured.", "UNCONFIGURED");
+    if (!this.baseUrl) {
+      throw new VidSrcProviderError("VidSrc playback is not configured.", "UNCONFIGURED");
+    }
+
     return playbackSourceSchema.parse({
       id: `vidsrc-tv-${tmdbId}-s${season}-e${episode}`,
-      provider: "vidsrc",
+      provider: this.name,
       type: "embed",
       url: `${this.baseUrl}/embed/tv/${tmdbId}/${season}/${episode}`,
       title: "VidSrc",
