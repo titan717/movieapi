@@ -10,7 +10,7 @@ TVmaze is the Phase 2 primary metadata provider for TV content. The public API p
 
 The public TVmaze API is rate limited and asks clients to handle HTTP 429 responses with backoff. MovieApi deliberately does not add retry logic in Phase 2; bounded retry/backoff belongs to the Phase 4 reliability layer.
 
-TVmaze's public API is licensed under CC BY-SA and requires attribution. Kinoma must include an appropriate TVmaze credit/link when using this provider.
+TVmaze's public API is licensed under CC BY-SA and requires attribution. Panda.fun must include an appropriate TVmaze credit/link when using this provider.
 
 ### TMDB
 
@@ -20,7 +20,7 @@ TMDB is the Phase 3 fallback and enrichment provider. TVmaze remains primary for
 
 ### VidSrc
 
-VidSrc is the planned playback provider. It is not treated as a metadata authority and is isolated from the TVmaze metadata adapter.
+VidSrc is the playback provider. MovieApi uses its documented embed interface as the fallback. An optional direct resolver can be supplied when an authorized provider interface exposes a direct media source. It is not treated as a metadata authority and is isolated from the TVmaze metadata adapter.
 
 ## Provider rules
 
@@ -36,7 +36,7 @@ A provider adapter must:
 
 ## Fallback
 
-Fallback is decided by the service/provider manager, not by Kinoma.
+Fallback is decided by the service/provider manager, not by Panda.fun.
 
 Fallback reasons include:
 
