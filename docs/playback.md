@@ -5,10 +5,10 @@ Playback is separate from trailer/video previews.
 ## Architecture
 
 ```
-Kinoma
+Panda.fun
   |
   v
-MovieApi PlaybackService
+MovieApi Playback Service
   |
   v
 ProviderResolver
@@ -20,16 +20,25 @@ VidSrcProvider
 Normalized playback response
 ```
 
-## Planned response
+## Response contract
+
+Playback responses expose a normalized `mode`:
+
+- `direct` — a validated direct HLS, DASH, or file source is available.
+- `embed` — only the provider embed is available.
+- `hybrid` — a validated direct source is available and an embed fallback is also returned.
+
+Example:
 
 ```json
 {
-  "available": true,
-  "type": "hls",
-  "url": "https://...",
-  "expiresAt": "...",
-  "qualities": [],
-  "subtitles": []
+  "mediaType": "movie",
+  "mode": "hybrid",
+  "source": {
+    "type": "hls",
+    "url": "https://authorized.example/media.m3u8",
+    "requiresClientPlayback": false
+  }
 }
 ```
 
@@ -41,7 +50,7 @@ Dynamic playback resolution should use short-lived sessions. Volatile playback U
 
 ## Continue Watching
 
-Continue Watching belongs to Kinoma. MovieApi provides media/episode identity and playback information; it does not own the user's watch-progress state.
+Continue Watching belongs to Panda.fun. MovieApi provides media/episode identity and playback information; it does not own the user's watch-progress state.
 
 ## Auto-next
 
