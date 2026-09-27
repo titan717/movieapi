@@ -15,8 +15,18 @@ function providerError(c: any, error: unknown) {
   return errorResponse(c, "PROVIDER_ERROR", error instanceof Error ? error.message : "Playback provider request failed.", 502, c.get("requestId"));
 }
 
+function getPlaybackMode(sources: Array<{ type: "embed" | "hls" | "dash" | "file" }>): "direct" | "embed" | "hybrid" {
+  const hasDirect = sources.some((source) => source.type !== "embed");
+  const hasEmbed = sources.some((source) => source.type === "embed");
+  if (hasDirect && hasEmbed) return "hybrid";
+  if (hasDirect) return "direct";
+  return "embed";
+}
+
 function sourcesResponse(c: any, mediaType: "movie" | "tv_episode", sources: unknown, extra: Record<string, unknown> = {}) {
-  return c.json({ success: true, data: { mediaType, sources, ...extra } });
+  const normalizedSources = Array.isArray(sources) ? sources : [];
+  const mode = getPlaybackMode(normalizedSources);
+  return c.json({ success: true, data: { mediaType, mode, sources: normalizedSources, ...extra } });
 }
 
 export type TvPlaybackIdResolver = (tvmazeId: number) => Promise<number | null>;
@@ -39,7 +49,7 @@ export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlayba
     if (!id.success) return errorResponse(c, "INVALID_MEDIA_ID", "Movie TMDB ID must be a positive integer.", 400, c.get("requestId"));
     try {
       const sources = await provider.getMovieSources(id.data);
-      return c.json({ success: true, data: { mediaType: "movie", source: sources[0] ?? null, tmdbId: id.data } });
+      return c.json({ success: true, data: { mediaType: "movie", mode: getPlaybackMode(sources), source: sources[0] ?? null, tmdbId: id.data } });
     } catch (error) {
       return providerError(c, error);
     }
@@ -80,7 +90,7 @@ export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlayba
       const tmdbId = explicitTmdbId > 0 ? explicitTmdbId : (resolveTvPlaybackId ? await resolveTvPlaybackId(id) : id);
       if (!tmdbId) return errorResponse(c, "MEDIA_NOT_FOUND", "Unable to resolve the TV show to a TMDB ID for playback.", 404, c.get("requestId"));
       const sources = await provider.getTvEpisodeSources(tmdbId, season, episode);
-      return c.json({ success: true, data: { mediaType: "tv_episode", source: sources[0] ?? null, tmdbId, season, episode } });
+      return c.json({ success: true, data: { mediaType: "tv_episode", mode: getPlaybackMode(sources), source: sources[0] ?? null, tmdbId, season, episode } });
     } catch (error) {
       return providerError(c, error);
     }
