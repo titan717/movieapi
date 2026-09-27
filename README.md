@@ -1,12 +1,12 @@
 # MovieApi
 
-MovieApi is the backend service layer for Kinoma, providing a stable, normalized API for movie and TV metadata, discovery, trailers, and playback-provider integration.
+MovieApi is the backend service layer for Panda.fun, providing a stable, normalized API for movie and TV metadata, discovery, trailers, and playback-provider integration.
 
 ## Status
 
-**Phase 5 — discovery aggregation implemented; runtime/deployment verification pending.**
+**Phase 8 — playback source contract and direct-source fallback architecture implemented.**
 
-Phase 4 adds bounded provider caching, stale-cache refresh, retries with jitter, circuit breakers, and provider health telemetry. Phase 5 adds provider-independent discovery aggregation, pagination, genres, recommendations, trending, airing, and a Kinoma-oriented home response.
+Phase 4 adds bounded provider caching, stale-cache refresh, retries with jitter, circuit breakers, and provider health telemetry. Phase 5 adds provider-independent discovery aggregation, pagination, genres, recommendations, trending, airing, and a Panda.fun-oriented home response.
 
 The foundation includes request tracing, CORS, API-key authentication, rate limiting, standardized errors, health/version endpoints, tests, and live documentation. Phase 2 adds schema-validated TVmaze TV metadata, search, seasons, episodes, images, and airing schedules. Phase 3 adds server-side TMDB fallback/enrichment, movie metadata, search, and external-ID matching.
 
@@ -28,7 +28,7 @@ Run verification:
 
 ## Architecture
 
-    Kinoma
+    Panda.fun
       |
       v
     MovieApi API (/api/v1)
@@ -39,12 +39,12 @@ Run verification:
       +-- Search
       +-- Discovery
       +-- Trailers
-      +-- Playback -> VidSrc provider
+      +-- Playback -> provider resolver -> direct source when authorized -> VidSrc embed fallback
       |
       v
     Cache / Reliability / Health / Monitoring
 
-Kinoma consumes MovieApi's normalized schemas and does not depend directly on provider response formats.
+Panda.fun consumes MovieApi's normalized schemas and does not depend directly on provider response formats.
 
 ## Phase discipline
 
