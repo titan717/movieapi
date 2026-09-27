@@ -18,9 +18,13 @@ TMDB is the Phase 3 fallback and enrichment provider. TVmaze remains primary for
 
 ## Playback
 
+### VidCore
+
+VidCore is the primary authorized direct-playback integration for Phase 9. MovieApi connects to a separately hosted VidCore resolver through its HTTP API, consumes the successful `play` HLS relay URL, and normalizes it into the common playback source schema. MovieApi does not duplicate the resolver implementation.
+
 ### VidSrc
 
-VidSrc is the playback provider. MovieApi uses its documented embed interface as the fallback. An optional direct resolver can be supplied when an authorized provider interface exposes a direct media source. It is not treated as a metadata authority and is isolated from the TVmaze metadata adapter.
+VidSrc is the playback fallback. MovieApi uses its documented embed interface when VidCore is unavailable or does not return a usable source. It is not treated as a metadata authority and is isolated from the TVmaze metadata adapter.
 
 ## Provider rules
 
