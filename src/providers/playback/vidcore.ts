@@ -1,10 +1,12 @@
 import { playbackSourceSchema, type PlaybackSource } from "./schemas.js";
 
+export type VidCoreFetch = (input: string, init?: RequestInit) => Promise<Response>;
+
 export type VidCoreResolverOptions = {
   baseUrl?: string;
   servers?: string[];
   timeoutMs?: number;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: VidCoreFetch;
 };
 
 export class VidCoreResolverError extends Error {
@@ -37,7 +39,7 @@ export class VidCoreResolver {
   private readonly baseUrl?: string;
   private readonly servers: string[];
   private readonly timeoutMs: number;
-  private readonly fetchImpl: typeof fetch;
+  private readonly fetchImpl: VidCoreFetch;
 
   constructor(options: VidCoreResolverOptions = {}) {
     const configured = options.baseUrl?.trim();
