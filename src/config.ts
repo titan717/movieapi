@@ -35,14 +35,14 @@ export type Config = {
     baseUrl: string;
     timeoutMs: number;
   };
-  vidlink: {
+  vidlink?: {
     baseUrl?: string;
   };
   /** @deprecated Kept for backwards-compatible tests/integrations using VidSrc directly. */
   vidsrc: {
     baseUrl?: string;
   };
-  vidcore: {
+  vidcore?: {
     baseUrl?: string;
     servers: string[];
     timeoutMs: number;
