@@ -201,7 +201,10 @@ export function createApp(config: Config = loadConfig()) {
   const discovery = new DiscoveryService(tmdb, tvmaze);
   const tmdbVideos = new TmdbVideoClient(config.tmdb);
   const vidcore = new VidCoreResolver(config.vidcore);
-  const playback = new HybridPlaybackProvider({\n    direct: vidcore,\n    embed: new VidLinkProvider(config.vidlink)\n  });
+  const playback = new HybridPlaybackProvider({
+    direct: vidcore,
+    embed: new VidLinkProvider(config.vidlink)
+  });
 
   app.use("*", requestId);
   app.use("*", cors({
