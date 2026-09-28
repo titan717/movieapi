@@ -38,6 +38,10 @@ export type Config = {
   vidlink: {
     baseUrl?: string;
   };
+  /** @deprecated Kept for backwards-compatible tests/integrations using VidSrc directly. */
+  vidsrc: {
+    baseUrl?: string;
+  };
   vidcore: {
     baseUrl?: string;
     servers: string[];
@@ -70,7 +74,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       baseUrl: parsed.MOVIEAPI_TMDB_BASE_URL,
       timeoutMs: parsed.MOVIEAPI_TMDB_TIMEOUT_MS
     },
-    vidlink: { baseUrl: parsed.MOVIEAPI_VIDLINK_BASE_URL },\n    vidsrc: { baseUrl: parsed.MOVIEAPI_VIDSRC_BASE_URL },
+    vidlink: { baseUrl: parsed.MOVIEAPI_VIDLINK_BASE_URL },
+    vidsrc: { baseUrl: parsed.MOVIEAPI_VIDSRC_BASE_URL },
     vidcore: {
       baseUrl: parsed.MOVIEAPI_VIDCORE_BASE_URL || undefined,
       servers: parsed.MOVIEAPI_VIDCORE_SERVERS.split(",").map((v) => v.trim()).filter(Boolean),
