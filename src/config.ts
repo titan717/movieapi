@@ -34,8 +34,13 @@ export type Config = {
     baseUrl: string;
     timeoutMs: number;
   };
-  vidsrc: {
+  vidlink: {
     baseUrl?: string;
+  };
+  vidcore: {
+    baseUrl?: string;
+    servers: string[];
+    timeoutMs: number;
   };
   corsOrigin: string;
   port: number;
