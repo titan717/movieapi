@@ -55,10 +55,14 @@ export class VidLinkProvider {
       id: `vidlink-movie-${tmdbId}`,
       type: "embed",
       url: url.toString(),
-      label: "VidLink JW",
+      title: "VidLink JW",
       quality: "auto",
+      language: null,
+      subtitles: [],
+      expiresAt: null,
+      requiresClientPlayback: true,
       provider: this.name
-    } as PlaybackSource];
+    }];
   }
 
   getTvEpisodeSources(tmdbId: number, season: number, episode: number): PlaybackSource[] {
