@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { errorResponse } from "../../errors.js";
-import { VidSrcProviderError } from "./vidsrc.js";
+import { VidLinkProviderError } from "./vidlink.js";
 import type { PlaybackProvider } from "./provider.js";
 
 type AppEnv = { Variables: { requestId: string } };
@@ -9,7 +9,7 @@ type AppEnv = { Variables: { requestId: string } };
 const idSchema = z.coerce.number().int().positive();
 
 function providerError(c: any, error: unknown) {
-  if (error instanceof VidSrcProviderError && error.kind === "UNCONFIGURED") {
+  if (error instanceof VidLinkProviderError && error.kind === "UNCONFIGURED") {
     return errorResponse(c, "PROVIDER_UNAVAILABLE", "Playback provider is not configured.", 503, c.get("requestId"));
   }
   return errorResponse(c, "PROVIDER_ERROR", error instanceof Error ? error.message : "Playback provider request failed.", 502, c.get("requestId"));
