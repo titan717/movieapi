@@ -26,6 +26,7 @@ export class EmbedWaveProvider {
   private readonly baseUrl: string;
   private readonly moviePath: string;
   private readonly tvPath: string;
+  private readonly query = "autoplay=1&nobrand=1";
 
   constructor(options: EmbedWaveProviderOptions = {}) {
     this.baseUrl = (options.baseUrl || "https://embedwave.cc").replace(/\/$/, "");
@@ -80,6 +81,7 @@ export class EmbedWaveProvider {
   }
 
   private build(template: string, values: Record<string, string | number>) {
-    return this.baseUrl + (applyTemplate(template.startsWith("/") ? template : "/" + template, values));
+    const path = applyTemplate(template.startsWith("/") ? template : "/" + template, values);
+    return this.baseUrl + path + (path.includes("?") ? "&" : "?") + this.query;
   }
 }
