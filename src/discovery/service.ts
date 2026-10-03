@@ -109,6 +109,28 @@ export class DiscoveryService {
     });
   }
 
+  newOnStreaming(provider: "netflix" | "disney-plus", page = 1, region = "US") {
+    const providerId = provider === "netflix" ? "8" : "337";
+    return this.cached(`new-on:${provider}:${page}:${region}`, async () => {
+      const result = await this.tmdb.discoverMovie({
+        page,
+        sortBy: "primary_release_date.desc",
+        withWatchProviders: providerId,
+        watchRegion: region,
+        withWatchMonetizationTypes: "flatrate",
+        region
+      });
+      return {
+        provider,
+        region,
+        page: result.page ?? page,
+        totalPages: result.total_pages ?? 0,
+        totalResults: result.total_results ?? 0,
+        results: result.results.map(normalizeTmdbMovieResult)
+      };
+    }, 300_000, 900_000);
+  }
+
   airingToday(country = "US") {
     return this.cached(`airing:today:${country}`, async () => {
       const date = todayUtc();
