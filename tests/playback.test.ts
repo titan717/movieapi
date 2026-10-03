@@ -33,7 +33,7 @@ describe("EmbedWave playback", () => {
       type: "embed",
       requiresClientPlayback: true
     });
-    expect(body.data.sources[0].url).toBe("https://embedwave.cc/embed/movie/11");
+    expect(body.data.sources[0].url).toBe("https://embedwave.cc/embed/movie/11?autoplay=1&nobrand=1");
   });
 
   it("resolves a TVMaze ID to TMDB before creating the EmbedWave episode URL", async () => {
@@ -44,7 +44,7 @@ describe("EmbedWave playback", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.tmdbId).toBe(1396);
-    expect(body.data.sources[0].url).toBe("https://embedwave.cc/embed/tv/1396/1/1");
+    expect(body.data.sources[0].url).toBe("https://embedwave.cc/embed/tv/1396/1/1?autoplay=1&nobrand=1");
   });
 
   it("returns an episode playback source", async () => {
@@ -53,7 +53,7 @@ describe("EmbedWave playback", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.source.provider).toBe("embedwave");
-    expect(body.data.source.url).toBe("https://embedwave.cc/embed/tv/1399/1/1");
+    expect(body.data.source.url).toBe("https://embedwave.cc/embed/tv/1399/1/1?autoplay=1&nobrand=1");
   });
 
   it("rejects invalid playback identifiers", async () => {
