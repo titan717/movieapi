@@ -26,7 +26,7 @@ export class EmbedWaveProvider {
   private readonly baseUrl: string;
   private readonly moviePath: string;
   private readonly tvPath: string;
-  private readonly query = "autoplay=1&nobrand=1&server=nxsha";
+  private readonly query = "autoplay=1&nobrand=1&server=nxsha&lang=en&sub=en";
 
   constructor(options: EmbedWaveProviderOptions = {}) {
     this.baseUrl = (options.baseUrl || "https://embedwave.cc").replace(/\/$/, "");
@@ -52,7 +52,7 @@ export class EmbedWaveProvider {
       provider: this.name,
       type: "embed",
       url,
-      title: "EmbedWave · Multi HD",
+      title: "EmbedWave · Multi HD · English Audio",
       quality: "auto",
       language: null,
       subtitles: [],
