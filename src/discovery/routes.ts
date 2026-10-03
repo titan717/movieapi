@@ -68,6 +68,20 @@ export function createDiscoveryRoutes(service: DiscoveryService) {
   });
 
   app.get("/upcoming/tv", pageRoute((page) => service.upcomingTv(page)));
+
+  app.get("/streaming/:provider", async (c) => {
+    const provider = c.req.param("provider");
+    if (provider !== "netflix" && provider !== "disney-plus") {
+      return errorResponse(c, "INVALID_REQUEST", "provider must be netflix or disney-plus.", 400, c.get("requestId"));
+    }
+    const page = positiveInt(c.req.query("page"), 1, 500);
+    const region = parseRegion(c.req.query("region") ?? "US");
+    if (page === null || region === null) {
+      return errorResponse(c, "INVALID_REQUEST", "page must be positive and region must be a two-letter ISO code.", 400, c.get("requestId"));
+    }
+    try { return c.json({ success: true, data: await service.newOnStreaming(provider, page, region) }); }
+    catch (error) { return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected streaming discovery error.", 500, c.get("requestId")); }
+  });
   app.get("/airing/upcoming", pageRoute((page) => service.upcomingAiring(page)));
 
   app.get("/airing/today", async (c) => {
