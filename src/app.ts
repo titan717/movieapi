@@ -211,6 +211,22 @@ export function createApp(config: Config = loadConfig()) {
   app.use("*", rateLimitMiddleware(config));
   app.use("/api/v1/*", authMiddleware(config));
 
+  app.route("/api/v1", createPlaybackRoutes(playback, async (tvmazeId) => {
+    if (!tmdb.enabled) return null;
+    try {
+      const show = await tvmaze.getShow(tvmazeId);
+      const match = await findMatchingTmdbTv(show, tmdb);
+      return match?.id ?? null;
+    } catch (error) {
+      log("warn", "playback_id_resolution_failed", {
+        tvmazeId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }));
+
+
   app.use("*", async (c, next) => {
     await next();
     c.header("x-content-type-options", "nosniff");
@@ -244,21 +260,6 @@ export function createApp(config: Config = loadConfig()) {
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
-  app.route("/api/v1", createPlaybackRoutes(playback, async (tvmazeId) => {
-    if (!tmdb.enabled) return null;
-    try {
-      const show = await tvmaze.getShow(tvmazeId);
-      const match = await findMatchingTmdbTv(show, tmdb);
-      return match?.id ?? null;
-    } catch (error) {
-      log("warn", "playback_id_resolution_failed", {
-        tvmazeId,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      return null;
-    }
-  }));
-
   app.get("/api/v1/search", async (c) => {
     const q = c.req.query("q")?.trim();
     if (!q) return errorResponse(c, "INVALID_REQUEST", "Query parameter q is required.", 400, c.get("requestId"));
