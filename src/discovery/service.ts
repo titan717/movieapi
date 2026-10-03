@@ -111,10 +111,15 @@ export class DiscoveryService {
 
   newOnStreaming(provider: "netflix" | "disney-plus", page = 1, region = "US") {
     const providerId = provider === "netflix" ? "8" : "337";
+    const recentDate = new Date();
+    recentDate.setUTCDate(recentDate.getUTCDate() - 120);
+    const recentReleaseStart = recentDate.toISOString().slice(0, 10);
     return this.cached(`new-on:${provider}:${page}:${region}`, async () => {
       const result = await this.tmdb.discoverMovie({
         page,
         sortBy: "primary_release_date.desc",
+        primaryReleaseDateGte: recentReleaseStart,
+        primaryReleaseDateLte: todayUtc(),
         withWatchProviders: providerId,
         watchRegion: region,
         withWatchMonetizationTypes: "flatrate",
