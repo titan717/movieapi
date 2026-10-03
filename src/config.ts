@@ -11,11 +11,9 @@ const envSchema = z.object({
   MOVIEAPI_TMDB_ACCESS_TOKEN: z.string().optional().default(""),
   MOVIEAPI_TMDB_BASE_URL: z.string().url().default("https://api.themoviedb.org/3"),
   MOVIEAPI_TMDB_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(8_000),
-  MOVIEAPI_VIDLINK_BASE_URL: z.string().url().default("https://vidlink.pro"),
-  MOVIEAPI_VIDSRC_BASE_URL: z.string().url().default("https://vidsrc.sh"),
-  MOVIEAPI_VIDCORE_BASE_URL: z.string().url().optional().default(""),
-  MOVIEAPI_VIDCORE_SERVERS: z.string().optional().default("Orbit,Supreme,Prime,Premiere 4K,Horizon"),
-  MOVIEAPI_VIDCORE_TIMEOUT_MS: z.coerce.number().int().positive().max(60_000).default(15_000),
+  MOVIEAPI_EMBEDWAVE_BASE_URL: z.string().url().default("https://embedwave.cc"),
+  MOVIEAPI_EMBEDWAVE_MOVIE_PATH: z.string().min(1).default("/embed/movie/{tmdbId}"),
+  MOVIEAPI_EMBEDWAVE_TV_PATH: z.string().min(1).default("/embed/tv/{tmdbId}/{season}/{episode}"),
   MOVIEAPI_CORS_ORIGIN: z.string().min(1).default("*"),
   PORT: z.coerce.number().int().positive().default(3000)
 });
@@ -35,17 +33,10 @@ export type Config = {
     baseUrl: string;
     timeoutMs: number;
   };
-  vidlink?: {
-    baseUrl?: string;
-  };
-  /** @deprecated Kept for backwards-compatible tests/integrations using VidSrc directly. */
-  vidsrc: {
-    baseUrl?: string;
-  };
-  vidcore?: {
-    baseUrl?: string;
-    servers: string[];
-    timeoutMs: number;
+  embedwave: {
+    baseUrl: string;
+    moviePath: string;
+    tvPath: string;
   };
   corsOrigin: string;
   port: number;
@@ -74,12 +65,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       baseUrl: parsed.MOVIEAPI_TMDB_BASE_URL,
       timeoutMs: parsed.MOVIEAPI_TMDB_TIMEOUT_MS
     },
-    vidlink: { baseUrl: parsed.MOVIEAPI_VIDLINK_BASE_URL },
-    vidsrc: { baseUrl: parsed.MOVIEAPI_VIDSRC_BASE_URL },
-    vidcore: {
-      baseUrl: parsed.MOVIEAPI_VIDCORE_BASE_URL || undefined,
-      servers: parsed.MOVIEAPI_VIDCORE_SERVERS.split(",").map((v) => v.trim()).filter(Boolean),
-      timeoutMs: parsed.MOVIEAPI_VIDCORE_TIMEOUT_MS
+    embedwave: {
+      baseUrl: parsed.MOVIEAPI_EMBEDWAVE_BASE_URL,
+      moviePath: parsed.MOVIEAPI_EMBEDWAVE_MOVIE_PATH,
+      tvPath: parsed.MOVIEAPI_EMBEDWAVE_TV_PATH
     },
     corsOrigin: parsed.MOVIEAPI_CORS_ORIGIN,
     port: parsed.PORT
