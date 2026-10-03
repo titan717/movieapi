@@ -12,7 +12,7 @@ import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 import { findMatchingTmdbTv } from "./providers/tvmaze/fallback.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
-import { HybridPlaybackProvider, VidCoreResolver, VidLinkProvider, createPlaybackRoutes } from "./providers/playback/index.js";
+import { EmbedWaveProvider, createPlaybackRoutes } from "./providers/playback/index.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -200,11 +200,7 @@ export function createApp(config: Config = loadConfig()) {
   const tmdb = new TmdbClient(config.tmdb);
   const discovery = new DiscoveryService(tmdb, tvmaze);
   const tmdbVideos = new TmdbVideoClient(config.tmdb);
-  const vidcore = new VidCoreResolver(config.vidcore);
-  const playback = new HybridPlaybackProvider({
-    direct: vidcore,
-    embed: new VidLinkProvider(config.vidlink)
-  });
+  const playback = new EmbedWaveProvider(config.embedwave);
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -234,7 +230,7 @@ export function createApp(config: Config = loadConfig()) {
       service: "movieapi",
       version: "0.9.0",
       timestamp: new Date().toISOString(),
-      providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth(), playback: playback.getHealth(), vidlink: playback.getHealth(), vidcore: vidcore.getHealth() }
+      providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth(), playback: playback.getHealth() }
     }
   }));
 
