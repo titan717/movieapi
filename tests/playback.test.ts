@@ -48,7 +48,7 @@ describe("EmbedWave playback", () => {
   });
 
   it("returns an episode playback source", async () => {
-    const response = await createApp(base).request("/api/v1/tv/1399/season/1/episode/1/play");
+    const response = await createApp(base).request("/api/v1/tv/1399/season/1/episode/1/play?tmdbId=1399");
     const body = await response.json();
 
     expect(response.status).toBe(200);
