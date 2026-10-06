@@ -12,7 +12,7 @@ import { normalizeShow } from "./providers/tvmaze/normalizer.js";
 import { findMatchingTmdbTv } from "./providers/tvmaze/fallback.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
-import { EmbedWaveProvider, createPlaybackRoutes } from "./providers/playback/index.js";
+import { VidyProvider, createPlaybackRoutes } from "./providers/playback/index.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -200,7 +200,7 @@ export function createApp(config: Config = loadConfig()) {
   const tmdb = new TmdbClient(config.tmdb);
   const discovery = new DiscoveryService(tmdb, tvmaze);
   const tmdbVideos = new TmdbVideoClient(config.tmdb);
-  const playback = new EmbedWaveProvider(config.embedwave);
+  const playback = new VidyProvider(config.vidy);
 
   app.use("*", requestId);
   app.use("*", cors({
