@@ -13,6 +13,7 @@ import { findMatchingTmdbTv } from "./providers/tvmaze/fallback.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
 import { VidyProvider, createPlaybackRoutes } from "./providers/playback/index.js";
+import { CanonicalDetailsService } from "./services/canonical-details.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -201,6 +202,7 @@ export function createApp(config: Config = loadConfig()) {
   const discovery = new DiscoveryService(tmdb, tvmaze);
   const tmdbVideos = new TmdbVideoClient(config.tmdb);
   const playback = new VidyProvider(config.vidy);
+  const canonicalDetails = new CanonicalDetailsService(tmdb, tmdbVideos);
 
   app.use("*", requestId);
   app.use("*", cors({
@@ -255,7 +257,7 @@ export function createApp(config: Config = loadConfig()) {
     data: { version: "0.9.0", apiVersion: "v1", phase: 9 }
   }));
 
-  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos));
+  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos, canonicalDetails));
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, tmdbVideos));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
