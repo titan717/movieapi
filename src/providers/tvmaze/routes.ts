@@ -84,18 +84,29 @@ export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient) {
       const show = await client.getShow(checked.id!);
       const normalized = normalizeShow(show);
       const missing = tmdb?.enabled ? missingFallbackFields(normalized) : [];
-      if (missing.length > 0 && tmdb) {
+
+      // Keep TVmaze as the metadata source when it already has complete fields,
+      // but always resolve a TMDB ID so downstream trailer/playback routes can
+      // use the TMDB-backed video catalog.
+      if (tmdb?.enabled) {
         try {
           const match = await findMatchingTmdbTv(show, tmdb);
           if (match) {
-            log("info", "provider_fallback", {
-              requestId: c.get("requestId"),
-              primaryProvider: "tvmaze",
-              fallbackProvider: "tmdb",
-              reason: "MISSING_FIELD",
-              fields: missing
+            if (missing.length > 0) {
+              log("info", "provider_fallback", {
+                requestId: c.get("requestId"),
+                primaryProvider: "tvmaze",
+                fallbackProvider: "tmdb",
+                reason: "MISSING_FIELD",
+                fields: missing
+              });
+              return c.json({ success: true, data: mergeTvmazeWithTmdb(show, match) });
+            }
+
+            return c.json({
+              success: true,
+              data: { ...normalized, ids: { ...normalized.ids, tmdb: match.id } }
             });
-            return c.json({ success: true, data: mergeTvmazeWithTmdb(show, match) });
           }
         } catch (fallbackError) {
           log("warn", "provider_fallback_failed", {
@@ -106,6 +117,7 @@ export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient) {
           });
         }
       }
+
       return c.json({ success: true, data: normalized });
     } catch (error) {
       return handleProviderError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
