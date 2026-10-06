@@ -255,8 +255,8 @@ export function createApp(config: Config = loadConfig()) {
     data: { version: "0.9.0", apiVersion: "v1", phase: 9 }
   }));
 
-  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb));
-  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze));
+  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos));
+  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, tmdbVideos));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
