@@ -33,7 +33,7 @@ describe("Vidy playback", () => {
       type: "embed",
       requiresClientPlayback: true
     });
-    expect(body.data.sources[0].url).toBe("https://vidy.cc/embed/movie/11?autoplay=1&nobrand=1");
+    expect(body.data.sources[0].url).toBe("https://vidy.st/movie/11?autoplay=true");
   });
 
   it("resolves a TVMaze ID to TMDB before creating the Vidy episode URL", async () => {
@@ -44,7 +44,7 @@ describe("Vidy playback", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.tmdbId).toBe(1396);
-    expect(body.data.sources[0].url).toBe("https://vidy.cc/embed/tv/1396/1/1?autoplay=1&nobrand=1");
+    expect(body.data.sources[0].url).toBe("https://vidy.st/tv/1396/1/1?autoplay=true&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true");
   });
 
   it("returns an episode playback source", async () => {
@@ -53,7 +53,7 @@ describe("Vidy playback", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.source.provider).toBe("vidy");
-    expect(body.data.source.url).toBe("https://vidy.cc/embed/tv/1399/1/1?autoplay=1&nobrand=1");
+    expect(body.data.source.url).toBe("https://vidy.st/tv/1399/1/1?autoplay=true&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true");
   });
 
   it("rejects invalid playback identifiers", async () => {
