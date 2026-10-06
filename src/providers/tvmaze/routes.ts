@@ -6,6 +6,7 @@ import type { TmdbClient } from "../tmdb/client.js";
 import { findMatchingTmdbTv, mergeTvmazeWithTmdb, missingFallbackFields } from "./fallback.js";
 import { TvmazeClient, TvmazeProviderError } from "./client.js";
 import { normalizeEpisode, normalizeSeason, normalizeShow } from "./normalizer.js";
+import type { TmdbVideoClient } from "../tmdb/videos.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -38,7 +39,7 @@ function validateId(c: Context<AppEnv>, value: string, label = "TVmaze show ID")
   return { id, response: null };
 }
 
-export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient) {
+export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient, videos?: TmdbVideoClient) {
   const app = new Hono<AppEnv>();
 
   app.get("/search", async (c) => {
@@ -92,20 +93,14 @@ export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient) {
         try {
           const match = await findMatchingTmdbTv(show, tmdb);
           if (match) {
-            if (missing.length > 0) {
-              log("info", "provider_fallback", {
-                requestId: c.get("requestId"),
-                primaryProvider: "tvmaze",
-                fallbackProvider: "tmdb",
-                reason: "MISSING_FIELD",
-                fields: missing
-              });
-              return c.json({ success: true, data: mergeTvmazeWithTmdb(show, match) });
-            }
-
+            const data = missing.length > 0
+              ? mergeTvmazeWithTmdb(show, match)
+              : mergeTvmazeWithTmdb(show, match);
+            let trailer = null;
+            try { trailer = videos ? await videos.getPrimaryTrailer("tv", match.id) : null; } catch {}
             return c.json({
               success: true,
-              data: { ...normalized, ids: { ...normalized.ids, tmdb: match.id } }
+              data: { ...data, trailer, ids: { ...data.ids, tmdb: match.id } }
             });
           }
         } catch (fallbackError) {
