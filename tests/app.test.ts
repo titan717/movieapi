@@ -269,6 +269,55 @@ describe("MovieApi Phase 5", () => {
     expect(call).toBe(3);
   });
 
+  it("attaches a TMDB ID to a complete TVmaze show so trailer lookup can use TMDB", async () => {
+    let call = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      call += 1;
+      const url = String(input);
+
+      if (url.includes("api.tvmaze.com")) {
+        return new Response(JSON.stringify(show), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      if (url.includes("/find/tt1234567")) {
+        return new Response(JSON.stringify({
+          tv_results: [{ id: 999, name: "Test Show", first_air_date: "2020-01-01" }]
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      return new Response(JSON.stringify({
+        id: 999,
+        name: "Test Show",
+        overview: "TMDB overview",
+        first_air_date: "2020-01-01",
+        poster_path: "/poster.jpg",
+        backdrop_path: "/backdrop.jpg",
+        vote_average: 9.1,
+        genres: [{ id: 18, name: "Drama" }],
+        episode_run_time: [50],
+        status: "Returning Series",
+        original_language: "en"
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }));
+
+    const response = await createApp(base).request("/api/v1/tv/1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.ids.tmdb).toBe(999);
+    expect(body.data.overview).toBe("A test show.");
+    expect(call).toBe(3);
+  });
+
   it("reports TMDB as unavailable when it is not configured", async () => {
     const response = await createApp({
       ...base,
