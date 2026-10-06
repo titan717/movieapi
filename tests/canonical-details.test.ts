@@ -57,23 +57,6 @@ describe("canonical TV detail enrichment", () => {
         return new Response(JSON.stringify({ id: 95350, results: [] }), { status: 200 });
       }
 
-      if (url.includes("/tv/95350")) {
-        return new Response(JSON.stringify({
-          id: 95350,
-          name: "Lanterns",
-          original_name: "Lanterns",
-          overview: "TMDB canonical synopsis.",
-          first_air_date: "2026-08-23",
-          poster_path: "/lanterns.jpg",
-          backdrop_path: "/lanterns-backdrop.jpg",
-          vote_average: 8.7,
-          genres: [{ id: 18, name: "Drama" }],
-          episode_run_time: [55],
-          status: "Returning Series",
-          original_language: "en"
-        }), { status: 200 });
-      }
-
       if (url.includes("/tv/95350/season/1/episode/1/videos")) {
         return new Response(JSON.stringify({
           id: 123456,
@@ -91,6 +74,23 @@ describe("canonical TV detail enrichment", () => {
           }]
         }), { status: 200 });
       }
+      if (url.includes("/tv/95350")) {
+        return new Response(JSON.stringify({
+          id: 95350,
+          name: "Lanterns",
+          original_name: "Lanterns",
+          overview: "TMDB canonical synopsis.",
+          first_air_date: "2026-08-23",
+          poster_path: "/lanterns.jpg",
+          backdrop_path: "/lanterns-backdrop.jpg",
+          vote_average: 8.7,
+          genres: [{ id: 18, name: "Drama" }],
+          episode_run_time: [55],
+          status: "Returning Series",
+          original_language: "en"
+        }), { status: 200 });
+      }
+
 
       throw new Error("Unexpected upstream request: " + url);
     }));
