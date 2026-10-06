@@ -47,9 +47,6 @@ function yearOf(value: string | null | undefined) {
 export async function findMatchingTmdbTv(show: TvmazeShow, client: TmdbClient): Promise<TmdbTvDetails | null> {
   if (!client.enabled) return null;
 
-  // IMDb is the strongest cross-provider identifier, but a failed /find lookup
-  // must not prevent the title-based fallback. Some TVMaze shows have an IMDb
-  // ID that TMDB does not know about.
   if (show.externals?.imdb) {
     try {
       const found = await client.findByExternalId(show.externals.imdb);
@@ -75,7 +72,15 @@ export async function findMatchingTmdbTv(show: TvmazeShow, client: TmdbClient): 
 export function mergeTvmazeWithTmdb(show: TvmazeShow, tmdb: TmdbTvDetails) {
   const primary = normalizeShow(show);
   const fallback = normalizeTmdbTv(tmdb);
-  const data = { ...primary, ids: { ...primary.ids, tmdb: tmdb.id } };
+  const data = {
+    ...primary,
+    title: fallback.title || primary.title,
+    originalTitle: fallback.originalTitle || primary.originalTitle,
+    overview: fallback.overview || primary.overview,
+    poster: fallback.poster || primary.poster,
+    backdrop: fallback.backdrop || primary.backdrop,
+    ids: { ...primary.ids, tmdb: tmdb.id }
+  };
 
   for (const field of fallbackFields) {
     const primaryValue = data[field];
