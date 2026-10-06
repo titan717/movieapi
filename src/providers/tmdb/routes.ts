@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../../errors.js";
 import { TmdbClient, TmdbProviderError } from "./client.js";
-import { normalizeTmdbMovie, normalizeTmdbTv, normalizeTmdbMovieResult, normalizeTmdbTvResult } from "./normalizer.js";
+import { normalizeTmdbMovieResult, normalizeTmdbTvResult } from "./normalizer.js";
 import type { TvmazeClient } from "../tvmaze/client.js";
-import type { TmdbVideoClient } from "./videos.js";
+import type { CanonicalDetailsService } from "../../services/canonical-details.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -31,17 +31,18 @@ function providerError(c: Context<AppEnv>, error: unknown) {
   return errorResponse(c, code, message, status, c.get("requestId"));
 }
 
-export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, videos?: TmdbVideoClient) {
+export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, canonical?: CanonicalDetailsService) {
   const app = new Hono<AppEnv>();
 
   app.get("/movie/:id", async (c) => {
     const id = positiveInt(c.req.param("id"), 0, 2_147_483_647);
     if (!id) return errorResponse(c, "INVALID_MEDIA_ID", "TMDB movie ID must be a positive integer.", 400, c.get("requestId"));
     try {
-      const normalized = normalizeTmdbMovie(await client.getMovie(id));
-      let trailer = null;
-      try { trailer = videos ? await videos.getPrimaryTrailer("movie", id) : null; } catch {}
-      return c.json({ success: true, data: { ...normalized, trailer } });
+      if (canonical && client.enabled) {
+        const data = await canonical.forMovie(id);
+        return c.json({ success: true, data });
+      }
+      throw new Error("Canonical details service is required for TMDB movie details.");
     } catch (error) {
       return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
     }
@@ -67,10 +68,11 @@ export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, vide
           tvmazeId = null;
         }
       }
-      const normalized = normalizeTmdbTv(show, tvmazeId);
-      let trailer = null;
-      try { trailer = videos ? await videos.getPrimaryTrailer("tv", id) : null; } catch {}
-      return c.json({ success: true, data: { ...normalized, trailer } });
+      if (canonical && client.enabled) {
+        const data = await canonical.forTv(id, tvmazeId);
+        return c.json({ success: true, data });
+      }
+      throw new Error("Canonical details service is required for TMDB TV details.");
     } catch (error) {
       return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
     }
