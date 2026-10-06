@@ -46,17 +46,23 @@ export class TmdbVideoClient {
     if (!this.enabled) return null;
 
     const language = options.language ?? "en-US";
-    const sources = type === "movie"
-      ? [await this.getMovieVideos(id, language)]
+    const requests = type === "movie"
+      ? [
+          () => this.getMovieVideos(id, language)
+        ]
       : [
-          await this.getTvVideos(id, language),
-          await this.getTvSeasonVideos(id, options.season ?? 1, language),
-          await this.getTvEpisodeVideos(id, options.season ?? 1, options.episode ?? 1, language)
+          () => this.getTvVideos(id, language),
+          () => this.getTvSeasonVideos(id, options.season ?? 1, language),
+          () => this.getTvEpisodeVideos(id, options.season ?? 1, options.episode ?? 1, language)
         ];
 
-    for (const videos of sources) {
-      const trailer = selectPrimaryTrailer(videos);
-      if (trailer) return trailer;
+    for (const load of requests) {
+      try {
+        const trailer = selectPrimaryTrailer(await load());
+        if (trailer) return trailer;
+      } catch {
+        // A missing show/season video list must not block the next fallback source.
+      }
     }
 
     return null;
