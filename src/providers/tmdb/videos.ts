@@ -52,7 +52,8 @@ export class TmdbVideoClient {
         ]
       : [
           () => this.getTvVideos(id, language),
-          () => this.getTvSeasonVideos(id, options.season ?? 1, language),
+          // TMDB TV pages can have no series-level videos. The premiere
+          // episode is the canonical fallback used for a show trailer.
           () => this.getTvEpisodeVideos(id, options.season ?? 1, options.episode ?? 1, language)
         ];
 
