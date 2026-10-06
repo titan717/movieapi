@@ -383,6 +383,77 @@ describe("MovieApi Phase 5", () => {
     expect(tv.data.results[0].canonicalId).not.toBe(movie.data.results[0].canonicalId);
   });
 
+  it("fetches movie and TV details through an explicit media type", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("/movie/27205/videos")) {
+        return new Response(JSON.stringify({ id: 27205, results: [] }), { status: 200 });
+      }
+      if (url.includes("/movie/27205")) {
+        return new Response(JSON.stringify({
+          id: 27205,
+          title: "Inception",
+          original_title: "Inception",
+          overview: "Movie details",
+          release_date: "2010-07-16",
+          poster_path: "/movie.jpg",
+          backdrop_path: "/movie-backdrop.jpg",
+          vote_average: 8.8,
+          genres: [{ id: 878, name: "Science Fiction" }],
+          runtime: 148,
+          status: "Released",
+          original_language: "en"
+        }), { status: 200 });
+      }
+      if (url.includes("/tv/95350/videos")) {
+        return new Response(JSON.stringify({ id: 95350, results: [] }), { status: 200 });
+      }
+      if (url.includes("/tv/95350")) {
+        return new Response(JSON.stringify({
+          id: 95350,
+          name: "Lanterns",
+          original_name: "Lanterns",
+          overview: "TV details",
+          first_air_date: "2026-08-16",
+          poster_path: "/tv.jpg",
+          backdrop_path: "/tv-backdrop.jpg",
+          vote_average: 8.4,
+          genres: [{ id: 18, name: "Drama" }],
+          episode_run_time: [55],
+          status: "Returning Series",
+          original_language: "en"
+        }), { status: 200 });
+      }
+
+      throw new Error("Unexpected upstream request: " + url);
+    }));
+
+    const app = createApp(base);
+    const movieResponse = await app.request("/api/v1/details/movie/27205");
+    const tvResponse = await app.request("/api/v1/details/tv/95350");
+    const invalidResponse = await app.request("/api/v1/details/series/95350");
+
+    const movie = await movieResponse.json();
+    const tv = await tvResponse.json();
+    const invalid = await invalidResponse.json();
+
+    expect(movieResponse.status).toBe(200);
+    expect(movie.data.mediaType).toBe("movie");
+    expect(movie.data.tmdbId).toBe(27205);
+    expect(movie.data.type).toBe("movie");
+    expect(movie.data.title).toBe("Inception");
+
+    expect(tvResponse.status).toBe(200);
+    expect(tv.data.mediaType).toBe("tv");
+    expect(tv.data.tmdbId).toBe(95350);
+    expect(tv.data.type).toBe("tv");
+    expect(tv.data.title).toBe("Lanterns");
+
+    expect(invalidResponse.status).toBe(400);
+    expect(invalid.error.code).toBe("INVALID_MEDIA_TYPE");
+  });
+
   it("reports TMDB as unavailable when it is not configured", async () => {
     const response = await createApp({
       ...base,
