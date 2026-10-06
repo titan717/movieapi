@@ -53,6 +53,10 @@ describe("canonical TV detail enrichment", () => {
         }), { status: 200 });
       }
 
+      if (url.includes("/tv/95350/videos")) {
+        return new Response(JSON.stringify({ id: 95350, results: [] }), { status: 200 });
+      }
+
       if (url.includes("/tv/95350")) {
         return new Response(JSON.stringify({
           id: 95350,
@@ -68,10 +72,6 @@ describe("canonical TV detail enrichment", () => {
           status: "Returning Series",
           original_language: "en"
         }), { status: 200 });
-      }
-
-      if (url.includes("/tv/95350/videos")) {
-        return new Response(JSON.stringify({ id: 95350, results: [] }), { status: 200 });
       }
 
       if (url.includes("/tv/95350/season/1/episode/1/videos")) {
