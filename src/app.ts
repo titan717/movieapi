@@ -14,6 +14,7 @@ import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
 import { VidyProvider, createPlaybackRoutes } from "./providers/playback/index.js";
 import { CanonicalDetailsService } from "./services/canonical-details.js";
+import { createDetailsRoutes } from "./details/routes.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -258,6 +259,7 @@ export function createApp(config: Config = loadConfig()) {
 
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos, canonicalDetails));
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, canonicalDetails));
+  app.route("/api/v1/details", createDetailsRoutes(canonicalDetails));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
@@ -337,6 +339,8 @@ const routes=[
 ["GET","/api/v1/tv/169/season/1","Season episodes"],
 ["GET","/api/v1/tv/169/season/1/episode/1","Episode lookup"],
 ["GET","/api/v1/tmdb/search/movie?q=Inception","Search movies"],
+["GET","/api/v1/details/tv/95350","Canonical TV details"],
+["GET","/api/v1/details/movie/27205","Canonical movie details"],
 ["GET","/api/v1/tmdb/search/tv?q=Breaking%20Bad","Search TV"],
 ["GET","/api/v1/tmdb/movie/27205","Movie details"],
 ["GET","/api/v1/tmdb/tv/1396","TMDB TV details"],
