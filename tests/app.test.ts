@@ -266,7 +266,7 @@ describe("MovieApi Phase 5", () => {
     expect(body.data.poster).toContain("fallback.jpg");
     expect(body.data.rating).toBe(8.2);
     expect(body.data.ids.tmdb).toBe(999);
-    expect(call).toBe(3);
+    expect(call).toBe(6);
   });
 
   it("attaches a TMDB ID to a complete TVmaze show so trailer lookup can use TMDB", async () => {
@@ -314,8 +314,8 @@ describe("MovieApi Phase 5", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.ids.tmdb).toBe(999);
-    expect(body.data.overview).toBe("A test show.");
-    expect(call).toBe(3);
+    expect(body.data.overview).toBe("TMDB overview");
+    expect(call).toBe(6);
   });
 
   it("reports TMDB as unavailable when it is not configured", async () => {
