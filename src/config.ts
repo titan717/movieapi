@@ -11,9 +11,9 @@ const envSchema = z.object({
   MOVIEAPI_TMDB_ACCESS_TOKEN: z.string().optional().default(""),
   MOVIEAPI_TMDB_BASE_URL: z.string().url().default("https://api.themoviedb.org/3"),
   MOVIEAPI_TMDB_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(8_000),
-  MOVIEAPI_EMBEDWAVE_BASE_URL: z.string().url().default("https://embedwave.cc"),
-  MOVIEAPI_EMBEDWAVE_MOVIE_PATH: z.string().min(1).default("/embed/movie/{tmdbId}"),
-  MOVIEAPI_EMBEDWAVE_TV_PATH: z.string().min(1).default("/embed/tv/{tmdbId}/{season}/{episode}"),
+  MOVIEAPI_VIDY_BASE_URL: z.string().url().default("https://vidy.st"),
+  MOVIEAPI_VIDY_MOVIE_PATH: z.string().min(1).default("/movie/{tmdbId}"),
+  MOVIEAPI_VIDY_TV_PATH: z.string().min(1).default("/tv/{tmdbId}/{season}/{episode}"),
   MOVIEAPI_CORS_ORIGIN: z.string().min(1).default("*"),
   PORT: z.coerce.number().int().positive().default(3000)
 });
@@ -33,7 +33,7 @@ export type Config = {
     baseUrl: string;
     timeoutMs: number;
   };
-  embedwave: {
+  vidy: {
     baseUrl: string;
     moviePath: string;
     tvPath: string;
@@ -65,10 +65,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       baseUrl: parsed.MOVIEAPI_TMDB_BASE_URL,
       timeoutMs: parsed.MOVIEAPI_TMDB_TIMEOUT_MS
     },
-    embedwave: {
-      baseUrl: parsed.MOVIEAPI_EMBEDWAVE_BASE_URL,
-      moviePath: parsed.MOVIEAPI_EMBEDWAVE_MOVIE_PATH,
-      tvPath: parsed.MOVIEAPI_EMBEDWAVE_TV_PATH
+    vidy: {
+      baseUrl: parsed.MOVIEAPI_VIDY_BASE_URL,
+      moviePath: parsed.MOVIEAPI_VIDY_MOVIE_PATH,
+      tvPath: parsed.MOVIEAPI_VIDY_TV_PATH
     },
     corsOrigin: parsed.MOVIEAPI_CORS_ORIGIN,
     port: parsed.PORT
