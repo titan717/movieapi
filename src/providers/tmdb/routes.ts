@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../../errors.js";
 import { TmdbClient, TmdbProviderError } from "./client.js";
-import { normalizeTmdbMovieResult, normalizeTmdbTvResult } from "./normalizer.js";
 import type { TvmazeClient } from "../tvmaze/client.js";
 import type { CanonicalDetailsService } from "../../services/canonical-details.js";
 
@@ -29,6 +28,14 @@ function providerError(c: Context<AppEnv>, error: unknown) {
   } as const;
   const [code, message, status] = map[error.kind];
   return errorResponse(c, code, message, status, c.get("requestId"));
+}
+
+function searchResultIdentity(type: "movie" | "tv", id: number) {
+  return {
+    type,
+    tmdbId: id,
+    canonicalId: `tmdb:${type}:${id}`
+  };
 }
 
 export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, canonical?: CanonicalDetailsService) {
@@ -117,7 +124,17 @@ export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, cano
     try {
       const result = await client.searchTv(q, page);
       c.header("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-      return c.json({ success: true, data: { ...result, source: "tmdb" } });
+      return c.json({
+        success: true,
+        data: {
+          ...result,
+          results: result.results.map((item) => ({
+            ...item,
+            ...searchResultIdentity("tv", item.id)
+          })),
+          source: "tmdb"
+        }
+      });
     } catch (error) {
       return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
     }
@@ -131,7 +148,17 @@ export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, cano
     try {
       const result = await client.searchMovie(q, page);
       c.header("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-      return c.json({ success: true, data: { ...result, source: "tmdb" } });
+      return c.json({
+        success: true,
+        data: {
+          ...result,
+          results: result.results.map((item) => ({
+            ...item,
+            ...searchResultIdentity("movie", item.id)
+          })),
+          source: "tmdb"
+        }
+      });
     } catch (error) {
       return providerError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
     }
