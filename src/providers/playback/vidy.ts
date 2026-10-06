@@ -30,7 +30,7 @@ export class VidyProvider {
   private readonly tvPath: string;
 
   constructor(options: VidyProviderOptions = {}) {
-    this.baseUrl = (options.baseUrl || "https://vidy.st").replace(/\/$/, "");
+    this.baseUrl = (options.baseUrl || "https://www.vidy.st").replace(/\/$/, "");
     this.moviePath = options.moviePath || "/movie/{tmdbId}";
     this.tvPath = options.tvPath || "/tv/{tmdbId}/{season}/{episode}";
   }
