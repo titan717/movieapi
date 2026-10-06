@@ -326,6 +326,63 @@ describe("MovieApi Phase 5", () => {
     expect(call).toBe(5);
   });
 
+  it("keeps movie and TV search results as distinct media identities", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/search/tv")) {
+        return new Response(JSON.stringify({
+          page: 1,
+          results: [{
+            id: 95350,
+            name: "The Last of Us",
+            original_name: "The Last of Us",
+            overview: "TV overview",
+            first_air_date: "2023-01-15",
+            poster_path: "/tv.jpg",
+            backdrop_path: "/tv-backdrop.jpg"
+          }],
+          total_pages: 1,
+          total_results: 1
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+
+      if (url.includes("/search/movie")) {
+        return new Response(JSON.stringify({
+          page: 1,
+          results: [{
+            id: 95350,
+            title: "The Last of Us",
+            original_title: "The Last of Us",
+            overview: "Movie overview",
+            release_date: "2024-01-01",
+            poster_path: "/movie.jpg",
+            backdrop_path: "/movie-backdrop.jpg"
+          }],
+          total_pages: 1,
+          total_results: 1
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+
+      throw new Error("Unexpected upstream request: " + url);
+    }));
+
+    const app = createApp(base);
+    const tvResponse = await app.request("/api/v1/tmdb/search/tv?q=the%20last%20of%20us&page=1");
+    const movieResponse = await app.request("/api/v1/tmdb/search/movie?q=the%20last%20of%20us&page=1");
+    const tv = await tvResponse.json();
+    const movie = await movieResponse.json();
+
+    expect(tvResponse.status).toBe(200);
+    expect(movieResponse.status).toBe(200);
+    expect(tv.data.results[0].type).toBe("tv");
+    expect(tv.data.results[0].tmdbId).toBe(95350);
+    expect(tv.data.results[0].canonicalId).toBe("tmdb:tv:95350");
+    expect(movie.data.results[0].type).toBe("movie");
+    expect(movie.data.results[0].tmdbId).toBe(95350);
+    expect(movie.data.results[0].canonicalId).toBe("tmdb:movie:95350");
+    expect(tv.data.results[0].canonicalId).not.toBe(movie.data.results[0].canonicalId);
+  });
+
   it("reports TMDB as unavailable when it is not configured", async () => {
     const response = await createApp({
       ...base,
