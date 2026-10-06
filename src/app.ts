@@ -228,7 +228,6 @@ export function createApp(config: Config = loadConfig()) {
     }
   }));
 
-
   app.use("*", async (c, next) => {
     await next();
     c.header("x-content-type-options", "nosniff");
@@ -258,7 +257,7 @@ export function createApp(config: Config = loadConfig()) {
   }));
 
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos, canonicalDetails));
-  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, tmdbVideos));
+  app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, canonicalDetails));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
