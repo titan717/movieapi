@@ -17,7 +17,7 @@ const base: Config = {
     baseUrl: "https://api.themoviedb.org/3",
     timeoutMs: 1_000
   },
-  embedwave: { baseUrl: "https://embedwave.cc", moviePath: "/embed/movie/{tmdbId}", tvPath: "/embed/tv/{tmdbId}/{season}/{episode}" },
+  vidy: { baseUrl: "https://vidy.st", moviePath: "/movie/{tmdbId}", tvPath: "/tv/{tmdbId}/{season}/{episode}" },
   corsOrigin: "*",
   port: 3000
 };
