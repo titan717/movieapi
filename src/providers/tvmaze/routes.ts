@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../../errors.js";
 import { log } from "../../logger.js";
+import type { CanonicalDetailsService } from "../../services/canonical-details.js";
 import type { TmdbClient } from "../tmdb/client.js";
-import { findMatchingTmdbTv, mergeTvmazeWithTmdb, missingFallbackFields } from "./fallback.js";
 import { TvmazeClient, TvmazeProviderError } from "./client.js";
 import { normalizeEpisode, normalizeSeason, normalizeShow } from "./normalizer.js";
 import type { TmdbVideoClient } from "../tmdb/videos.js";
@@ -39,7 +39,7 @@ function validateId(c: Context<AppEnv>, value: string, label = "TVmaze show ID")
   return { id, response: null };
 }
 
-export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient, videos?: TmdbVideoClient) {
+export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient, videos?: TmdbVideoClient, canonical?: CanonicalDetailsService) {
   const app = new Hono<AppEnv>();
 
   app.get("/search", async (c) => {
@@ -83,37 +83,23 @@ export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient, vide
 
     try {
       const show = await client.getShow(checked.id!);
-      const normalized = normalizeShow(show);
-      const missing = tmdb?.enabled ? missingFallbackFields(normalized) : [];
 
-      // Keep TVmaze as the metadata source when it already has complete fields,
-      // but always resolve a TMDB ID so downstream trailer/playback routes can
-      // use the TMDB-backed video catalog.
-      if (tmdb?.enabled) {
+      // TVmaze identifies the show and supplies episode data; canonical
+      // title, synopsis, artwork, IDs and trailer come from TMDB.
+      if (canonical && tmdb?.enabled && videos) {
         try {
-          const match = await findMatchingTmdbTv(show, tmdb);
-          if (match) {
-            const data = missing.length > 0
-              ? mergeTvmazeWithTmdb(show, match)
-              : mergeTvmazeWithTmdb(show, match);
-            let trailer = null;
-            try { trailer = videos ? await videos.getPrimaryTrailer("tv", match.id) : null; } catch {}
-            return c.json({
-              success: true,
-              data: { ...data, trailer, ids: { ...data.ids, tmdb: match.id } }
-            });
-          }
-        } catch (fallbackError) {
-          log("warn", "provider_fallback_failed", {
+          const data = await canonical.forTvmazeShow(show);
+          if (data) return c.json({ success: true, data });
+        } catch (canonicalError) {
+          log("warn", "canonical_details_failed", {
             requestId: c.get("requestId"),
-            primaryProvider: "tvmaze",
-            fallbackProvider: "tmdb",
-            reason: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+            provider: "tmdb",
+            reason: canonicalError instanceof Error ? canonicalError.message : String(canonicalError)
           });
         }
       }
 
-      return c.json({ success: true, data: normalized });
+      return c.json({ success: true, data: normalizeShow(show) });
     } catch (error) {
       return handleProviderError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
     }
