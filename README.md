@@ -2,13 +2,6 @@
 
 MovieApi is the backend service layer for Panda.fun, providing a stable, normalized API for movie and TV metadata, discovery, trailers, and playback-provider integration.
 
-## Status
-
-**Phase 9 — authorized VidCore resolver integration with VidSrc fallback implemented.**
-
-Phase 4 adds bounded provider caching, stale-cache refresh, retries with jitter, circuit breakers, and provider health telemetry. Phase 5 adds provider-independent discovery aggregation, pagination, genres, recommendations, trending, airing, and a Panda.fun-oriented home response.
-
-The foundation includes request tracing, CORS, API-key authentication, rate limiting, standardized errors, health/version endpoints, tests, and live documentation. Phase 2 adds schema-validated TVmaze TV metadata, search, seasons, episodes, images, and airing schedules. Phase 3 adds server-side TMDB fallback/enrichment, movie metadata, search, and external-ID matching.
 
 ## Quick start
 
@@ -39,16 +32,14 @@ Run verification:
       +-- Search
       +-- Discovery
       +-- Trailers
-      +-- Playback -> authorized VidCore resolver -> HLS proxy source -> VidSrc embed fallback
+      +-- Playback
       |
       v
     Cache / Reliability / Health / Monitoring
 
-Panda.fun consumes MovieApi's normalized schemas and does not depend directly on provider response formats.
 
-## Phase discipline
 
-A phase is not considered complete until its implementation, tests, documentation, OpenAPI contract, CI, and deployment path have been checked. Documentation and OpenAPI are updated alongside implementation.
+
 
 ## Documentation
 
@@ -75,10 +66,8 @@ A phase is not considered complete until its implementation, tests, documentatio
 
 ## Provider strategy
 
-- TVmaze: primary metadata provider.
-- TMDB: fallback and field-level metadata enrichment.
-- VidCore: separately hosted authorized playback resolver, consumed through its HTTP API.
-- VidSrc: embed playback fallback.
+
+- TMDB: primary metadata provider.
 
 Provider adapters remain replaceable so additional authorized providers can be added later.
 
@@ -88,9 +77,7 @@ MovieAPI connects to a separately hosted VidCore resolver through its documented
 
 Configuration:
 
-- `MOVIEAPI_VIDCORE_BASE_URL`
-- `MOVIEAPI_VIDCORE_SERVERS`
-- `MOVIEAPI_VIDCORE_TIMEOUT_MS`
+
 
 The resolver should run as a persistent Node service rather than as a MovieAPI/Vercel function. Keep its HLS proxy endpoint reachable by Panda.fun when direct browser playback requires it.
 
