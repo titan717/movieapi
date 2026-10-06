@@ -238,6 +238,10 @@ describe("MovieApi Phase 5", () => {
         }), { status: 200, headers: { "content-type": "application/json" } });
       }
 
+      if (url.includes("/videos")) {
+        return new Response(JSON.stringify({ id: 999, results: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+
       if (url.includes("/find/tt1234567")) {
         return new Response(JSON.stringify({
           tv_results: [{ id: 999, name: "Test Show", first_air_date: "2020-01-01" }]
@@ -280,6 +284,10 @@ describe("MovieApi Phase 5", () => {
           status: 200,
           headers: { "content-type": "application/json" }
         });
+      }
+
+      if (url.includes("/videos")) {
+        return new Response(JSON.stringify({ id: 999, results: [] }), { status: 200, headers: { "content-type": "application/json" } });
       }
 
       if (url.includes("/find/tt1234567")) {
