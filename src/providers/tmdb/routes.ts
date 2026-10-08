@@ -45,6 +45,7 @@ export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, cano
     const id = positiveInt(c.req.param("id"), 0, 2_147_483_647);
     if (!id) return errorResponse(c, "INVALID_MEDIA_ID", "TMDB movie ID must be a positive integer.", 400, c.get("requestId"));
     try {
+      if (!client.enabled) throw new TmdbProviderError("TMDB is not configured.", "UNCONFIGURED", 503);
       if (canonical && client.enabled) {
         const data = await canonical.forMovie(id);
         return c.json({ success: true, data });
@@ -59,6 +60,7 @@ export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, cano
     const id = positiveInt(c.req.param("id"), 0, 2_147_483_647);
     if (!id) return errorResponse(c, "INVALID_MEDIA_ID", "TMDB TV ID must be a positive integer.", 400, c.get("requestId"));
     try {
+      if (!client.enabled) throw new TmdbProviderError("TMDB is not configured.", "UNCONFIGURED", 503);
       const show = await client.getTv(id);
       let tvmazeId: number | null = null;
       if (tvmaze) {
