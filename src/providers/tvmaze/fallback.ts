@@ -74,15 +74,10 @@ export function mergeTvmazeWithTmdb(show: TvmazeShow, tmdb: TmdbTvDetails) {
   const fallback = normalizeTmdbTv(tmdb);
   const data = {
     ...primary,
-    title: fallback.title || primary.title,
-    originalTitle: fallback.originalTitle || primary.originalTitle,
-    overview: fallback.overview || primary.overview,
-    poster: fallback.poster || primary.poster,
-    backdrop: fallback.backdrop || primary.backdrop,
     ids: { ...primary.ids, tmdb: tmdb.id }
   };
 
-  for (const field of fallbackFields) {
+  for (const field of [...fallbackFields, "title", "originalTitle"] as const) {
     const primaryValue = data[field];
     const fallbackValue = fallback[field];
     if ((!hasValue(primaryValue) || (Array.isArray(primaryValue) && primaryValue.length === 0)) && hasValue(fallbackValue)) {
