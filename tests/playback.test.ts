@@ -47,13 +47,13 @@ describe("Vidy playback", () => {
     expect(body.data.sources[0].url).toBe("https://vidy.st/tv/1396/1/1?autoplay=true&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true");
   });
 
-  it("returns an episode playback source", async () => {
-    const response = await createApp(base).request("/api/v1/tv/1399/season/1/episode/1/play?tmdbId=1399");
+  it("returns an episode playback source with a resume position", async () => {
+    const response = await createApp(base).request("/api/v1/tv/1399/season/1/episode/1/play?tmdbId=1399&progress=142");
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.data.source.provider).toBe("vidy");
-    expect(body.data.source.url).toBe("https://vidy.st/tv/1399/1/1?autoplay=true&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true");
+    expect(body.data.source.url).toBe("https://vidy.st/tv/1399/1/1?autoplay=true&progress=142&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true");
   });
 
   it("rejects invalid playback identifiers", async () => {
