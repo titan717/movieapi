@@ -2,7 +2,7 @@ import type { TmdbClient } from "../providers/tmdb/client.js";
 import type { TmdbVideoClient } from "../providers/tmdb/videos.js";
 import { normalizeTmdbMovie, normalizeTmdbTv } from "../providers/tmdb/normalizer.js";
 import type { TvmazeShow } from "../providers/tvmaze/schemas.js";
-import { findMatchingTmdbTv } from "../providers/tvmaze/fallback.js";
+import { findMatchingTmdbTv, mergeTvmazeWithTmdb } from "../providers/tvmaze/fallback.js";
 
 export class CanonicalDetailsService {
   constructor(
@@ -14,7 +14,7 @@ export class CanonicalDetailsService {
     const match = await findMatchingTmdbTv(show, this.tmdb);
     if (!match) return null;
 
-    const data = normalizeTmdbTv(match, show.id);
+    const data = mergeTvmazeWithTmdb(show, match);
     const trailer = await this.videos.getPrimaryTrailer("tv", match.id);
 
     return {
