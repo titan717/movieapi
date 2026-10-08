@@ -43,11 +43,11 @@ export class VidyProvider {
     };
   }
 
-  getMovieSources(tmdbId: number): PlaybackSource[] {
+  getMovieSources(tmdbId: number, progress = 0): PlaybackSource[] {
     if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
       throw new VidyProviderError("INVALID", "A valid TMDB movie ID is required.");
     }
-    const url = this.build(this.moviePath, { tmdbId, movieId: tmdbId });
+    const url = this.build(this.moviePath, { tmdbId, movieId: tmdbId }, progress);
     return [{
       id: `vidy-movie-${tmdbId}`,
       provider: this.name,
@@ -62,11 +62,11 @@ export class VidyProvider {
     }];
   }
 
-  getTvEpisodeSources(tmdbId: number, season: number, episode: number): PlaybackSource[] {
+  getTvEpisodeSources(tmdbId: number, season: number, episode: number, progress = 0): PlaybackSource[] {
     if (!Number.isInteger(tmdbId) || tmdbId <= 0 || !Number.isInteger(season) || season <= 0 || !Number.isInteger(episode) || episode <= 0) {
       throw new VidyProviderError("INVALID", "Valid TMDB, season, and episode IDs are required.");
     }
-    const url = this.build(this.tvPath, { tmdbId, movieId: tmdbId, season, episode });
+    const url = this.build(this.tvPath, { tmdbId, movieId: tmdbId, season, episode }, progress);
     return [{
       id: `vidy-tv-${tmdbId}-s${season}e${episode}`,
       provider: this.name,
@@ -81,12 +81,17 @@ export class VidyProvider {
     }];
   }
 
-  private build(template: string, values: Record<string, string | number>) {
+  private build(template: string, values: Record<string, string | number>, progress = 0) {
     const path = applyTemplate(template.startsWith("/") ? template : "/" + template, values);
     const separator = path.includes("?") ? "&" : "?";
-    const params = path.startsWith("/tv/")
-      ? "autoplay=true&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true"
-      : "autoplay=true";
-    return this.baseUrl + path + separator + params;
+    const params = new URLSearchParams({ autoplay: "true" });
+    const start = Math.floor(Number(progress) || 0);
+    if (start > 0) params.set("progress", String(start));
+    if (path.startsWith("/tv/")) {
+      params.set("nextEpisode", "true");
+      params.set("episodeSelector", "true");
+      params.set("autoplayNextEpisode", "true");
+    }
+    return this.baseUrl + path + separator + params.toString();
   }
 }
