@@ -89,6 +89,7 @@ export function createPlaybackRoutes(provider: PlaybackProvider, resolveTvPlayba
     try {
       const { id, season, episode } = params.data;
       const explicitTmdbId = Number(c.req.query("tmdbId") || 0);
+      const progress = Math.max(0, Number(c.req.query("progress") || 0) || 0);
       const tmdbId = explicitTmdbId > 0 ? explicitTmdbId : (resolveTvPlaybackId ? await resolveTvPlaybackId(id) : id);
       if (!tmdbId) return errorResponse(c, "MEDIA_NOT_FOUND", "Unable to resolve the TV show to a TMDB ID for playback.", 404, c.get("requestId"));
       const sources = await provider.getTvEpisodeSources(tmdbId, season, episode, progress);
