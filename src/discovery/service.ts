@@ -1,8 +1,6 @@
 import { MemoryCache } from "../reliability.js";
 import type { TmdbClient } from "../providers/tmdb/client.js";
-import type { TvmazeClient } from "../providers/tvmaze/client.js";
 import { normalizeTmdbMovieResult, normalizeTmdbTvResult, normalizeTmdbTrendingResult } from "../providers/tmdb/normalizer.js";
-import { normalizeShow } from "../providers/tvmaze/normalizer.js";
 
 function todayUtc() {
   return new Date().toISOString().slice(0, 10);
@@ -15,10 +13,7 @@ function slug(value: string) {
 export class DiscoveryService {
   private readonly cache = new MemoryCache<unknown>(300);
 
-  constructor(
-    private readonly tmdb: TmdbClient,
-    private readonly tvmaze: TvmazeClient
-  ) {}
+  constructor(private readonly tmdb: TmdbClient) {}
 
   private async cached<T>(key: string, loader: () => Promise<T>, ttlMs = 60_000, staleTtlMs = 300_000): Promise<T> {
     const result = await this.cache.getOrSet(key, loader, ttlMs, staleTtlMs);
@@ -139,22 +134,20 @@ export class DiscoveryService {
   airingToday(country = "US") {
     return this.cached(`airing:today:${country}`, async () => {
       const date = todayUtc();
-      const episodes = await this.tvmaze.getSchedule(country, date);
+      const result = await this.tmdb.discoverTv({
+        page: 1,
+        sortBy: "popularity.desc",
+        airDateGte: date,
+        airDateLte: date
+      });
       return {
         date,
         country,
-        episodes: episodes.map((episode) => ({
-          id: episode.id,
-          title: episode.name,
-          season: episode.season ?? null,
-          number: episode.number ?? null,
-          airdate: episode.airdate ?? null,
-          airtime: episode.airtime ?? null,
-          airstamp: episode.airstamp ?? null,
-          image: episode.image?.original ?? episode.image?.medium ?? null,
-          show: episode._embedded?.show ? normalizeShow(episode._embedded.show) : null
-        })),
-        source: "tvmaze"
+        shows: result.results.map(normalizeTmdbTvResult),
+        page: result.page ?? 1,
+        totalPages: result.total_pages ?? 1,
+        totalResults: result.total_results ?? result.results.length,
+        source: "tmdb"
       };
     }, 300_000, 900_000);
   }
