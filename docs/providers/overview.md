@@ -10,7 +10,7 @@ The unified `/api/v1/search` endpoint searches movies and TV shows through TMDB.
 
 ## Legacy TVmaze compatibility
 
-TVmaze remains only for legacy schedule/episode compatibility and mapping older TVmaze IDs to TMDB IDs. It is not a public artwork source. Normalized legacy responses must set image fields to `null` unless the artwork has been resolved from TMDB. The legacy `/:id/images` endpoint must resolve a TMDB record and return only TMDB image URLs.
+TVmaze remains only for legacy schedule/episode compatibility and mapping older TVmaze IDs to TMDB IDs. It is not a public artwork source. Normalized legacy responses must set image fields to `null` unless the artwork has been resolved from TMDB. Legacy TVmaze metadata and image endpoints are not mounted publicly; callers should use the TMDB-specific or canonical details routes.
 
 Do not silently fall back to TVmaze posters, stills, or backdrops when TMDB is unavailable. Return a normalized provider error or a missing-record response instead.
 
