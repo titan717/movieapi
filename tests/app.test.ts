@@ -124,6 +124,8 @@ describe("MovieApi Phase 5", () => {
     expect(body.data.title).toBe("Test Show");
     expect(body.data.overview).toBe("A test show.");
     expect(body.data.ids.imdb).toBe("tt1234567");
+    expect(body.data.poster).toBeNull();
+    expect(JSON.stringify(body)).not.toContain("static.tvmaze.com");
     expect(body.data).not.toHaveProperty("cast");
     expect(body.data).not.toHaveProperty("crew");
   });
@@ -137,45 +139,47 @@ describe("MovieApi Phase 5", () => {
     expect(body.error.code).toBe("MEDIA_NOT_FOUND");
   });
 
-  it("searches and paginates TVmaze results", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify([
-      { score: 1, show },
-      { score: 0.9, show: { ...show, id: 2, name: "Second Show" } }
-    ]), {
-      status: 200,
-      headers: { "content-type": "application/json" }
-    })));
+  it("searches and paginates unified TMDB movie and TV results", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/search/movie")) return new Response(JSON.stringify({
+        page: 1, total_pages: 1, total_results: 1,
+        results: [{ id: 10, title: "Test Movie", original_title: "Test Movie", overview: "Movie", release_date: "2020-01-01", poster_path: "/movie.jpg", backdrop_path: "/movie-backdrop.jpg", vote_average: 7, popularity: 9 }]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+      if (url.includes("/search/tv")) return new Response(JSON.stringify({
+        page: 1, total_pages: 1, total_results: 1,
+        results: [{ id: 11, name: "Test Show", original_name: "Test Show", overview: "TV", first_air_date: "2020-01-01", poster_path: "/tv.jpg", backdrop_path: "/tv-backdrop.jpg", vote_average: 8, popularity: 10 }]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+      throw new Error("Unexpected upstream request: " + url);
+    }));
 
-    const response = await createApp({ ...base, tmdb: { ...base.tmdb, accessToken: undefined } }).request("/api/v1/search?q=test&limit=1");
+    const response = await createApp(base).request("/api/v1/search?q=test&limit=1");
     const body = await response.json();
     expect(response.status).toBe(200);
+    expect(body.data.source).toBe("tmdb");
     expect(body.data.results).toHaveLength(1);
+    expect(body.data.results[0].source).toBe("tmdb");
+    expect(body.data.results[0].poster).toContain("image.tmdb.org/t/p/original/");
     expect(body.data.pagination.total).toBe(2);
     expect(body.data.pagination.hasNext).toBe(true);
   });
+  it("serves airing-today discovery from TMDB, not the TVmaze schedule", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (!url.includes("/discover/tv")) throw new Error("Unexpected upstream request: " + url);
+      return new Response(JSON.stringify({
+        page: 1, total_pages: 1, total_results: 1,
+        results: [{ id: 1396, name: "Breaking Bad", original_name: "Breaking Bad", overview: "TMDB overview", first_air_date: "2008-01-20", poster_path: "/breaking-bad.jpg", backdrop_path: "/backdrop.jpg", vote_average: 9, popularity: 100 }]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }));
 
-  it("normalizes the show embedded in the TVmaze airing response", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify([
-      {
-        id: 10,
-        name: "Episode One",
-        season: 1,
-        number: 1,
-        image: null,
-        summary: "<p>Episode summary.</p>",
-        _embedded: { show }
-      }
-    ]), {
-      status: 200,
-      headers: { "content-type": "application/json" }
-    })));
-
-    const response = await createApp({ ...base, tmdb: { ...base.tmdb, accessToken: undefined } }).request("/api/v1/airing/today");
+    const response = await createApp(base).request("/api/v1/airing/today");
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body.data.episodes[0].show.id).toBe("kinoma_tvmaze_1");
+    expect(body.data.source).toBe("tmdb");
+    expect(body.data.shows[0].id).toBe("kinoma_tmdb_tv_1396");
+    expect(body.data.shows[0].poster).toContain("image.tmdb.org/t/p/original/");
   });
-
   it("maps malformed TVmaze JSON to a provider response error", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{not-json", { status: 200 })));
 
