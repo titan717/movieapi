@@ -37,11 +37,9 @@ MovieApi prefers an internal Kinoma ID with provider mappings:
 
 ```json
 {
-  "id": "kinoma_8f92a1",
+  "id": "kinoma_tmdb_tv_99966",
   "ids": {
-    "tvmaze": 12345,
-    "tmdb": 99966,
-    "imdb": "tt1234567"
+    "tmdb": 99966
   }
 }
 ```
@@ -53,3 +51,7 @@ Cast and crew are outside the MovieApi data contract.
 ## Phase discipline
 
 New functionality must include its tests and documentation in the same phase.
+
+## Public metadata authority
+
+TMDB is authoritative for all public search, discovery, details, and artwork. Public image URLs must use `https://image.tmdb.org/t/p/`. TVmaze is retained only for internal legacy playback-ID resolution and its artwork is suppressed by the normalizers.
