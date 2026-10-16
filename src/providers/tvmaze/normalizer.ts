@@ -15,12 +15,8 @@ function cleanHtml(value: string | null | undefined): string | null {
 
 // TVmaze artwork is intentionally never exposed by MovieApi. Public artwork
 // must come from TMDB's image CDN, even when a legacy TVmaze ID is supplied.
-function imagePair(_image: TvmazeShow["image"] | TvmazeEpisode["image"] | TvmazeSeason["image"]): { medium: string | null; original: string | null } | null {
-  return null;
-}
 
 export function normalizeShow(show: TvmazeShow) {
-  const images = imagePair(show.image);
   return {
     id: `kinoma_tvmaze_${show.id}`,
     type: "tv",
@@ -28,7 +24,7 @@ export function normalizeShow(show: TvmazeShow) {
     originalTitle: show.name,
     year: show.premiered ? Number(show.premiered.slice(0, 4)) || null : null,
     rating: show.rating?.average ?? null,
-    poster: images?.original ?? images?.medium ?? null,
+    poster: null,
     backdrop: null,
     overview: cleanHtml(show.summary),
     genres: show.genres ?? [],
@@ -76,7 +72,7 @@ export function normalizeEpisode(episode: TvmazeEpisode) {
     runtime: episode.averageRuntime ?? episode.runtime ?? null,
     rating: episode.rating?.average ?? null,
     overview: cleanHtml(episode.summary),
-    image: imagePair(episode.image),
+    image: null,
     source: "tvmaze"
   };
 }
@@ -90,7 +86,7 @@ export function normalizeSeason(season: TvmazeSeason) {
     episodeOrder: season.episodeOrder ?? null,
     premiereDate: season.premiereDate ?? null,
     endDate: season.endDate ?? null,
-    image: imagePair(season.image),
+    image: null,
     summary: cleanHtml(season.summary),
     source: "tvmaze"
   };
