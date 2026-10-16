@@ -4,17 +4,13 @@ Providers are adapters behind a common interface.
 
 ## Metadata
 
-### TVmaze
-
-TVmaze is the Phase 2 primary metadata provider for TV content. The public API provides show search, show details, seasons, episodes, images, and schedules. The provider uses a descriptive User-Agent and validates every JSON response before normalization.
-
-The public TVmaze API is rate limited and asks clients to handle HTTP 429 responses with backoff. MovieApi deliberately does not add retry logic in Phase 2; bounded retry/backoff belongs to the Phase 4 reliability layer.
-
-TVmaze's public API is licensed under CC BY-SA and requires attribution. Panda.fun must include an appropriate TVmaze credit/link when using this provider.
-
 ### TMDB
 
-TMDB is the Phase 3 fallback and enrichment provider. TVmaze remains primary for TV metadata; TMDB provides movie metadata and fills missing TV fields when a safe identity match is available.
+TMDB is the sole public metadata and artwork authority for search, discovery, movie and TV details, seasons, episodes, posters, backdrops, and episode stills. Public image URLs use TMDB's image CDN. MovieApi normalizes TMDB responses before exposing them to Panda.fun.
+
+### TVmaze compatibility
+
+TVmaze is retained only as an internal compatibility adapter for resolving legacy TVmaze IDs to TMDB IDs for playback. Legacy normalizers deliberately suppress TVmaze image URLs; TVmaze is not a public artwork source. New clients should use the unified `/api/v1/search`, `/api/v1/tmdb/*`, and `/api/v1/details/*` routes.
 
 ## Playback
 
