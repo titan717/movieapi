@@ -3,55 +3,34 @@
 ## High-level flow
 
 ```
-Kinoma
+Panda.fun
   |
   v
 MovieApi API
   |
-  v
-Service Layer
+  +--> Search / Metadata / Discovery / Trailers ----> TMDB
   |
-  +--> Metadata ----> Provider Manager ----> TVmaze primary
-  |                                      \-> TMDB fallback
+  +--> Legacy TV schedule and episode compatibility -> TVmaze (text-only; no artwork)
   |
-  +--> Search
-  +--> Discovery
-  +--> Trailers
-  +--> Playback ----> Provider Manager ----> VidSrc
+  +--> Playback -------------------------------------> Vidy
   |
-  +--> Cache
-  +--> Health / Monitoring
+  +--> Cache / Reliability / Health
 ```
+
+## Metadata authority
+
+TMDB is the sole authority for public movie and TV metadata, including titles, synopses, ratings, release information, posters, backdrops, and episode stills. Public artwork URLs must use `https://image.tmdb.org/t/p/`.
+
+Legacy TVmaze-ID routes are compatibility surfaces only. They must not expose TVmaze image URLs; when artwork is requested using a legacy TV ID, MovieApi resolves the show to TMDB first. Unified `/api/v1/search` searches TMDB movies and TV shows.
 
 ## Boundaries
 
-Kinoma consumes only MovieApi's normalized schemas. Provider response formats must never leak into the public Kinoma contract.
+Provider response formats must never leak into the public contract. Provider adapters own HTTP calls and parsing; the service layer owns normalization, identity mapping, caching, and response composition.
 
-The provider layer owns HTTP calls, provider-specific parsing, and provider-specific identifiers.
+## Playback
 
-The service layer owns business rules, normalization, fallback decisions, caching policy, and public response composition.
-
-## Stable identity
-
-MovieApi prefers an internal Kinoma ID with provider mappings:
-
-```json
-{
-  "id": "kinoma_tmdb_tv_99966",
-  "ids": {
-    "tmdb": 99966
-  }
-}
-```
-
-## No cast or crew
-
-Cast and crew are outside the MovieApi data contract.
+Vidy remains the playback integration. Metadata-provider changes must not change playback URLs, IDs, or source-selection behavior.
 
 ## Phase discipline
 
-New functionality must include its tests and documentation in the same phase.
-
-## Public metadata authority
-
-TMDB is authoritative for all public search, discovery, details, and artwork. Public image URLs must use `https://image.tmdb.org/t/p/`. TVmaze is retained only for internal legacy playback-ID resolution and its artwork is suppressed by the normalizers.
+Every externally observable behavior change must include regression tests and documentation in the same phase.
