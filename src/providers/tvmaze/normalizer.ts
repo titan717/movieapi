@@ -13,11 +13,10 @@ function cleanHtml(value: string | null | undefined): string | null {
     .trim() || null;
 }
 
-function imagePair(image: TvmazeShow["image"] | TvmazeEpisode["image"] | TvmazeSeason["image"]) {
-  return image ? {
-    medium: image.medium ?? null,
-    original: image.original ?? null
-  } : null;
+// TVmaze artwork is intentionally never exposed by MovieApi. Public artwork
+// must come from TMDB's image CDN, even when a legacy TVmaze ID is supplied.
+function imagePair(_image: TvmazeShow["image"] | TvmazeEpisode["image"] | TvmazeSeason["image"]) {
+  return null;
 }
 
 export function normalizeShow(show: TvmazeShow) {
