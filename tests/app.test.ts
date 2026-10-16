@@ -121,6 +121,32 @@ describe("MovieApi Phase 5", () => {
     expect(docs).toContain("TMDB");
   });
 
+  it("returns TMDB-backed posters from the unified search endpoint", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/search/movie")) return new Response(JSON.stringify({
+        page: 1, total_pages: 1, total_results: 1,
+        results: [{ id: 10, title: "Test Movie", original_title: "Test Movie", overview: "Movie overview", release_date: "2020-01-01", poster_path: "/movie.jpg", backdrop_path: "/movie-backdrop.jpg", vote_average: 7, popularity: 9 }]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+      if (url.includes("/search/tv")) return new Response(JSON.stringify({
+        page: 1, total_pages: 1, total_results: 1,
+        results: [{ id: 11, name: "Test Show", original_name: "Test Show", overview: "TV overview", first_air_date: "2020-01-01", poster_path: "/tv.jpg", backdrop_path: "/tv-backdrop.jpg", vote_average: 8, popularity: 10 }]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+      throw new Error("Unexpected upstream request: " + url);
+    }));
+
+    const response = await createApp(base).request("/api/v1/search?q=test&limit=1");
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.data.source).toBe("tmdb");
+    expect(body.data.results).toHaveLength(1);
+    expect(body.data.results[0].source).toBe("tmdb");
+    expect(body.data.results[0].poster).toContain("https://image.tmdb.org/t/p/original/");
+    expect(body.data.pagination.total).toBe(2);
+    expect(body.data.pagination.hasNext).toBe(true);
+    expect(JSON.stringify(body)).not.toContain("static.tvmaze.com");
+  });
+
   it("keeps movie and TV search results as distinct media identities", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
