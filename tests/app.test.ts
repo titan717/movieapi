@@ -147,6 +147,24 @@ describe("MovieApi Phase 5", () => {
     expect(JSON.stringify(body)).not.toContain("static.tvmaze.com");
   });
 
+  it("uses TMDB discovery for airing-today results", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (!url.includes("/discover/tv")) throw new Error("Unexpected upstream request: " + url);
+      return new Response(JSON.stringify({
+        page: 1, total_pages: 1, total_results: 1,
+        results: [{ id: 1396, name: "Breaking Bad", original_name: "Breaking Bad", overview: "TMDB overview", first_air_date: "2008-01-20", poster_path: "/breaking-bad.jpg", backdrop_path: "/backdrop.jpg", vote_average: 9, popularity: 100 }]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }));
+
+    const response = await createApp(base).request("/api/v1/airing/today");
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.data.source).toBe("tmdb");
+    expect(body.data.shows[0].id).toBe("kinoma_tmdb_tv_1396");
+    expect(body.data.shows[0].poster).toContain("https://image.tmdb.org/t/p/original/");
+  });
+
   it("keeps movie and TV search results as distinct media identities", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
