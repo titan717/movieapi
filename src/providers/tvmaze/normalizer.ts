@@ -15,7 +15,7 @@ function cleanHtml(value: string | null | undefined): string | null {
 
 // TVmaze artwork is intentionally never exposed by MovieApi. Public artwork
 // must come from TMDB's image CDN, even when a legacy TVmaze ID is supplied.
-function imagePair(_image: TvmazeShow["image"] | TvmazeEpisode["image"] | TvmazeSeason["image"]) {
+function imagePair(_image: TvmazeShow["image"] | TvmazeEpisode["image"] | TvmazeSeason["image"]): { medium: string | null; original: string | null } | null {
   return null;
 }
 
