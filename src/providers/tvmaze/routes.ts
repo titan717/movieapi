@@ -189,18 +189,21 @@ export function createTvmazeRoutes(client: TvmazeClient, tmdb?: TmdbClient, vide
   app.get("/:id/images", async (c) => {
     const checked = validateId(c, c.req.param("id"));
     if (checked.response) return checked.response;
+    if (!tmdb?.enabled || !canonical) {
+      return errorResponse(c, "PROVIDER_UNAVAILABLE", "TMDB artwork is unavailable until TMDB is configured.", 503, c.get("requestId"));
+    }
 
     try {
-      const images = await client.getShowImages(checked.id!);
-      return c.json({
-        success: true,
-        data: {
-          images,
-          source: "tvmaze"
-        }
-      });
+      const show = await client.getShow(checked.id!);
+      const details = await canonical.forTvmazeShow(show);
+      if (!details) return errorResponse(c, "MEDIA_NOT_FOUND", "No matching TMDB TV record was found for this legacy ID.", 404, c.get("requestId"));
+      const images = [
+        details.poster ? { type: "poster", original: details.poster } : null,
+        details.backdrop ? { type: "background", original: details.backdrop } : null
+      ].filter((image) => image !== null);
+      return c.json({ success: true, data: { images, source: "tmdb", tmdbId: details.ids.tmdb } });
     } catch (error) {
-      return handleProviderError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
+      return handleProviderError(c, error) ?? errorResponse(c, "INTERNAL_ERROR", "Unable to resolve TMDB artwork.", 500, c.get("requestId"));
     }
   });
 
