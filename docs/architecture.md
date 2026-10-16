@@ -10,7 +10,7 @@ MovieApi API
   |
   +--> Search / Metadata / Discovery / Trailers ----> TMDB
   |
-  +--> Legacy TV schedule and episode compatibility -> TVmaze (text-only; no artwork)
+  +--> Legacy TVmaze IDs ----------------------------> Internal playback resolution only
   |
   +--> Playback -------------------------------------> Vidy
   |
@@ -21,7 +21,7 @@ MovieApi API
 
 TMDB is the sole authority for public movie and TV metadata, including titles, synopses, ratings, release information, posters, backdrops, and episode stills. Public artwork URLs must use `https://image.tmdb.org/t/p/`.
 
-Legacy TVmaze-ID routes are compatibility surfaces only. They must not expose TVmaze image URLs; when artwork is requested using a legacy TV ID, MovieApi resolves the show to TMDB first. Unified `/api/v1/search` searches TMDB movies and TV shows.
+Legacy TVmaze metadata and schedule routes are not mounted publicly. TVmaze remains available only inside playback resolution to translate historical TV IDs to TMDB IDs. Unified `/api/v1/search` searches TMDB movies and TV shows.
 
 ## Boundaries
 
