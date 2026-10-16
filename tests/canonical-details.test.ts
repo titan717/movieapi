@@ -16,50 +16,13 @@ const base: Config = {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("canonical TV detail enrichment", () => {
-  it("returns TMDB title and synopsis plus a normalized trailer for a TVMaze show", async () => {
+describe("canonical TMDB TV details", () => {
+  it("returns TMDB title, synopsis, artwork, and normalized trailer", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-
-      if (url.includes("api.tvmaze.com/shows/44776")) {
-        return new Response(JSON.stringify({
-          id: 44776,
-          name: "Lanterns",
-          type: "Scripted",
-          language: "English",
-          genres: ["Drama", "Mystery"],
-          status: "Running",
-          runtime: null,
-          averageRuntime: 55,
-          premiered: "2026-08-23",
-          ended: null,
-          officialSite: null,
-          schedule: { time: "21:00", days: ["Sunday"], timezone: "America/New_York" },
-          rating: { average: 8.6 },
-          weight: 90,
-          network: null,
-          webChannel: null,
-          dvdCountry: null,
-          externals: { imdb: "tt24083908", thetvdb: null, tvrage: null },
-          image: { medium: "https://example.com/lanterns-medium.jpg", original: "https://example.com/lanterns-original.jpg" },
-          summary: "<p>TVMaze synopsis.</p>",
-          updated: 1
-        }), { status: 200 });
-      }
-
-      if (url.includes("/find/tt24083908")) {
-        return new Response(JSON.stringify({
-          tv_results: [{ id: 95350, name: "Lanterns", first_air_date: "2026-08-23" }]
-        }), { status: 200 });
-      }
-
       if (url.includes("/tv/95350/videos")) {
-        return new Response(JSON.stringify({ id: 95350, results: [] }), { status: 200 });
-      }
-
-      if (url.includes("/tv/95350/season/1/episode/1/videos")) {
         return new Response(JSON.stringify({
-          id: 123456,
+          id: 95350,
           results: [{
             id: "lanterns-trailer",
             iso_639_1: "en",
@@ -72,7 +35,7 @@ describe("canonical TV detail enrichment", () => {
             official: true,
             published_at: "2026-08-20T00:00:00Z"
           }]
-        }), { status: 200 });
+        }), { status: 200, headers: { "content-type": "application/json" } });
       }
       if (url.includes("/tv/95350")) {
         return new Response(JSON.stringify({
@@ -88,10 +51,8 @@ describe("canonical TV detail enrichment", () => {
           episode_run_time: [55],
           status: "Returning Series",
           original_language: "en"
-        }), { status: 200 });
+        }), { status: 200, headers: { "content-type": "application/json" } });
       }
-
-
       throw new Error("Unexpected upstream request: " + url);
     }));
 
@@ -101,6 +62,7 @@ describe("canonical TV detail enrichment", () => {
     expect(response.status).toBe(200);
     expect(body.data.title).toBe("Lanterns");
     expect(body.data.overview).toBe("TMDB canonical synopsis.");
+    expect(body.data.poster).toContain("https://image.tmdb.org/t/p/original/lanterns.jpg");
     expect(body.data.ids.tmdb).toBe(95350);
     expect(body.data.trailer.embedUrl).toBe("https://www.youtube.com/embed/LANTRAILER");
     expect(body.data.trailer.type).toBe("Trailer");
