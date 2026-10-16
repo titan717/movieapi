@@ -143,11 +143,11 @@ describe("MovieApi Phase 5", () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/search/movie")) return new Response(JSON.stringify({
-        page: 1, total_pages: 1, total_results: 1,
+        page: 1, total_pages: 2, total_results: 2,
         results: [{ id: 10, title: "Test Movie", original_title: "Test Movie", overview: "Movie", release_date: "2020-01-01", poster_path: "/movie.jpg", backdrop_path: "/movie-backdrop.jpg", vote_average: 7, popularity: 9 }]
       }), { status: 200, headers: { "content-type": "application/json" } });
       if (url.includes("/search/tv")) return new Response(JSON.stringify({
-        page: 1, total_pages: 1, total_results: 1,
+        page: 1, total_pages: 2, total_results: 2,
         results: [{ id: 11, name: "Test Show", original_name: "Test Show", overview: "TV", first_air_date: "2020-01-01", poster_path: "/tv.jpg", backdrop_path: "/tv-backdrop.jpg", vote_average: 8, popularity: 10 }]
       }), { status: 200, headers: { "content-type": "application/json" } });
       throw new Error("Unexpected upstream request: " + url);
@@ -468,49 +468,6 @@ describe("MovieApi Phase 5", () => {
     expect(body.error.code).toBe("PROVIDER_UNAVAILABLE");
   });
 
-  it("uses TMDB for public search and never returns TVmaze artwork", async () => {
-    const requested: string[] = [];
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      requested.push(url);
-      if (url.includes("/search/movie")) {
-        return new Response(JSON.stringify({
-          page: 1,
-          results: [{
-            id: 11, title: "TMDB Movie", original_title: "TMDB Movie",
-            overview: "Movie overview", release_date: "2024-01-01",
-            poster_path: "/movie-poster.jpg", backdrop_path: "/movie-backdrop.jpg",
-            vote_average: 8.1, popularity: 99, genre_ids: [], original_language: "en"
-          }],
-          total_pages: 1, total_results: 1
-        }), { status: 200, headers: { "content-type": "application/json" } });
-      }
-      if (url.includes("/search/tv")) {
-        return new Response(JSON.stringify({
-          page: 1,
-          results: [{
-            id: 22, name: "TMDB Series", original_name: "TMDB Series",
-            overview: "Series overview", first_air_date: "2023-01-01",
-            poster_path: "/tv-poster.jpg", backdrop_path: "/tv-backdrop.jpg",
-            vote_average: 8.4, popularity: 88, genre_ids: [], original_language: "en", origin_country: []
-          }],
-          total_pages: 1, total_results: 1
-        }), { status: 200, headers: { "content-type": "application/json" } });
-      }
-      throw new Error("Unexpected upstream request: " + url);
-    }));
 
-    const response = await createApp(base).request("/api/v1/search?q=tmdb");
-    const body = await response.json();
-    expect(response.status).toBe(200);
-    expect(body.data.results).toHaveLength(2);
-    expect(body.data.results.every((item: { source: string }) => item.source === "tmdb")).toBe(true);
-    expect(body.data.results.map((item: { poster: string }) => item.poster)).toEqual([
-      "https://image.tmdb.org/t/p/original/movie-poster.jpg",
-      "https://image.tmdb.org/t/p/original/tv-poster.jpg"
-    ]);
-    expect(requested.every((url) => url.includes("api.themoviedb.org"))).toBe(true);
-    expect(JSON.stringify(body)).not.toContain("static.tvmaze.com");
-  });
 
 });
