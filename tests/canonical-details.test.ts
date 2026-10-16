@@ -95,7 +95,7 @@ describe("canonical TV detail enrichment", () => {
       throw new Error("Unexpected upstream request: " + url);
     }));
 
-    const response = await createApp(base).request("/api/v1/tv/44776");
+    const response = await createApp(base).request("/api/v1/details/tv/95350");
     const body = await response.json();
 
     expect(response.status).toBe(200);
