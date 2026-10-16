@@ -20,7 +20,7 @@ paths:
           description: Version information
   /search:
     get:
-      summary: Search TV shows
+      summary: Search TMDB movies and TV shows
       parameters:
         - name: q
           in: query
@@ -34,7 +34,7 @@ paths:
           schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
       responses:
         "200":
-          description: Normalized TV search results
+          description: Unified TMDB-normalized movie and TV results
         "400":
           $ref: "#/components/responses/InvalidRequest"
   /tv/search:
@@ -106,12 +106,12 @@ paths:
           $ref: "#/components/responses/NotFound"
   /tv/{id}/images:
     get:
-      summary: Get TVmaze show images
+      summary: Resolve TMDB artwork for a legacy TV ID
       parameters:
         - $ref: "#/components/parameters/ShowId"
       responses:
         "200":
-          description: Show images
+          description: TMDB artwork only
   /tmdb/movie/{id}:
     get:
       summary: Get a normalized TMDB movie
