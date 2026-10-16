@@ -6,9 +6,8 @@ import { requestId } from "./middleware/request-id.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { rateLimitMiddleware } from "./middleware/rate-limit.js";
 import { log } from "./logger.js";
-import { TvmazeClient, TvmazeProviderError, createTvmazeRoutes, createTvmazeScheduleRoutes } from "./providers/tvmaze/index.js";
-import { TmdbClient, createTmdbRoutes } from "./providers/tmdb/index.js";
-import { normalizeShow } from "./providers/tvmaze/normalizer.js";
+import { TvmazeClient } from "./providers/tvmaze/index.js";
+import { TmdbClient, TmdbProviderError, createTmdbRoutes, normalizeTmdbMovieResult, normalizeTmdbTvResult } from "./providers/tmdb/index.js";
 import { findMatchingTmdbTv } from "./providers/tvmaze/fallback.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
 import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.js";
@@ -82,7 +81,7 @@ const OPENAPI_YAML = [
   "      summary: Panda.fun homepage discovery aggregation",
   "  /search:",
   "    get:",
-  "      summary: Search TV shows",
+  "      summary: Search movies and TV through TMDB",
   "      parameters:",
   "        - name: q",
   "          in: query",
@@ -90,62 +89,7 @@ const OPENAPI_YAML = [
   "          schema: { type: string }",
   "      responses:",
   '        "200":',
-  "          description: Normalized TV search results",
-  "  /tv/search:",
-  "    get:",
-  "      summary: Search TV shows through the TV route",
-  "      responses:",
-  '        "200":',
-  "          description: Normalized TV search results",
-  "  /tv/{id}:",
-  "    get:",
-  "      summary: Get normalized TV show",
-  "      parameters:",
-  "        - name: id",
-  "          in: path",
-  "          required: true",
-  "          schema: { type: integer, minimum: 1 }",
-  "      responses:",
-  '        "200":',
-  "          description: Normalized TV show",
-  '        "404":',
-  "          description: TV show not found",
-  "  /tv/{id}/seasons:",
-  "    get:",
-  "      summary: List seasons",
-  "      responses:",
-  '        "200":',
-  "          description: Normalized seasons",
-  "  /tv/{id}/episodes:",
-  "    get:",
-  "      summary: List episodes",
-  "      responses:",
-  '        "200":',
-  "          description: Paginated normalized episodes",
-  "  /tv/{id}/season/{season}:",
-  "    get:",
-  "      summary: Get a season and its episodes",
-  "      responses:",
-  '        "200":',
-  "          description: Season and episodes",
-  "  /tv/{id}/season/{season}/episode/{episode}:",
-  "    get:",
-  "      summary: Get an episode by season and number",
-  "      responses:",
-  '        "200":',
-  "          description: Normalized episode",
-  "  /tv/{id}/images:",
-  "    get:",
-  "      summary: Get TVmaze show images",
-  "      responses:",
-  '        "200":',
-  "          description: Show images",
-  "  /tmdb/movie/{id}:",
-  "    get:",
-  "      summary: Get a normalized TMDB movie",
-  "      responses:",
-  '        "200":',
-  "          description: TMDB movie",
+  "          description: Normalized TMDB movie and TV search results",
   "  /tmdb/tv/{id}:",
   "    get:",
   "      summary: Get a normalized TMDB TV show",
@@ -260,47 +204,53 @@ export function createApp(config: Config = loadConfig()) {
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos, canonicalDetails));
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, canonicalDetails));
   app.route("/api/v1/details", createDetailsRoutes(canonicalDetails));
-  app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
+  // Unified public search is TMDB-only. TVmaze remains an internal compatibility
+  // adapter for legacy playback ID resolution and never supplies public artwork.
   app.get("/api/v1/search", async (c) => {
     const q = c.req.query("q")?.trim();
     if (!q) return errorResponse(c, "INVALID_REQUEST", "Query parameter q is required.", 400, c.get("requestId"));
+    const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 20) || 20, 1), 50);
+    const page = Math.min(Math.max(Number(c.req.query("page") ?? 1) || 1, 1), 500);
 
     try {
-      const matches = await tvmaze.searchShows(q);
-      const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 20) || 20, 1), 50);
-      const page = Math.min(Math.max(Number(c.req.query("page") ?? 1) || 1, 1), 1000);
+      const [movies, shows] = await Promise.all([
+        tmdb.searchMovie(q, page),
+        tmdb.searchTv(q, page)
+      ]);
+      const combined = [
+        ...movies.results.map((item) => ({ score: item.popularity ?? 0, data: normalizeTmdbMovieResult(item) })),
+        ...shows.results.map((item) => ({ score: item.popularity ?? 0, data: normalizeTmdbTvResult(item) }))
+      ].sort((a, b) => b.score - a.score);
       const start = (page - 1) * limit;
+      const results = combined.slice(0, limit).map(({ score, data }) => ({ score, ...data }));
+      const total = (movies.total_results ?? movies.results.length) + (shows.total_results ?? shows.results.length);
       return c.json({
         success: true,
         data: {
           query: q,
-          results: matches.slice(start, start + limit).map((match) => ({
-            score: match.score,
-            ...normalizeShow(match.show)
-          })),
-          pagination: {
-            page,
-            limit,
-            total: matches.length,
-            hasNext: start + limit < matches.length
-          }
+          results,
+          source: "tmdb",
+          pagination: { page, limit, total, hasNext: page < Math.max(movies.total_pages ?? 1, shows.total_pages ?? 1) || start + results.length < total }
         }
       });
     } catch (error) {
-      if (error instanceof TvmazeProviderError) {
-        const kind = error.kind;
-        const map: Record<string, [string, string, 400 | 429 | 502 | 504]> = {
-          TIMEOUT: ["PROVIDER_TIMEOUT", "TVmaze did not respond in time.", 504],
-          RATE_LIMIT: ["PROVIDER_RATE_LIMITED", "TVmaze rate limited the request.", 429],
-          HTTP_ERROR: ["PROVIDER_UNAVAILABLE", "TVmaze is currently unavailable.", 502],
-          INVALID_RESPONSE: ["PROVIDER_INVALID_RESPONSE", "TVmaze returned an invalid response.", 502]
-        };
-        const mapped = map[kind];
-        if (mapped) return errorResponse(c, mapped[0], mapped[1], mapped[2], c.get("requestId"));
+      if (error instanceof TmdbProviderError) {
+        const map = {
+          UNCONFIGURED: ["PROVIDER_UNAVAILABLE", "TMDB is not configured.", 503],
+          TIMEOUT: ["PROVIDER_TIMEOUT", "TMDB did not respond in time.", 504],
+          RATE_LIMIT: ["PROVIDER_RATE_LIMITED", "TMDB rate limited the request.", 429],
+          HTTP_ERROR: ["PROVIDER_UNAVAILABLE", "TMDB is currently unavailable.", 502],
+          INVALID_RESPONSE: ["PROVIDER_INVALID_RESPONSE", "TMDB returned an invalid response.", 502],
+          NOT_FOUND: ["MEDIA_NOT_FOUND", "The requested TMDB content was not found.", 404],
+          UNAUTHORIZED: ["PROVIDER_AUTH_FAILED", "TMDB authentication failed.", 502],
+          CIRCUIT_OPEN: ["PROVIDER_UNAVAILABLE", "TMDB is temporarily unavailable.", 503]
+        } as const;
+        const [code, message, status] = map[error.kind];
+        return errorResponse(c, code, message, status, c.get("requestId"));
       }
-      return errorResponse(c, "INTERNAL_ERROR", "Unexpected provider error.", 500, c.get("requestId"));
+      return errorResponse(c, "INTERNAL_ERROR", "Unexpected TMDB search error.", 500, c.get("requestId"));
     }
   });
 
@@ -327,17 +277,13 @@ section{margin-top:38px}h2{font-size:22px}pre{background:#08090d;border:1px soli
 <div id="routes" class="grid"></div>
 <section><h2>Response format</h2><pre>{"success":true,"data":{}}</pre><pre>{"success":false,"error":{"code":"INVALID_REQUEST","message":"...","requestId":"..."}}</pre></section>
 <section><h2>Authentication</h2><p style="color:#a8aab5">If API authentication is enabled, add your X-API-Key in the request headers from your application. This browser documentation page does not persist or store keys.</p></section>
-<section><h2>Attribution</h2><p style="color:#a8aab5">TVmaze data is licensed under CC BY-SA. Applications using TVmaze data should provide the required attribution and link-back.</p></section>
+<section><h2>Metadata source</h2><p style="color:#a8aab5">Public search, title metadata, and artwork are sourced from TMDB. TVmaze is retained only for internal legacy playback-ID resolution.</p></section>
 </main>
 <script>
 const routes=[
 ["GET","/api/v1/health","API health"],
 ["GET","/api/v1/version","API version"],
-["GET","/api/v1/search?q=Breaking%20Bad","Search TV shows"],
-["GET","/api/v1/tv/169","TV show details"],
-["GET","/api/v1/tv/169/seasons","TV seasons"],
-["GET","/api/v1/tv/169/season/1","Season episodes"],
-["GET","/api/v1/tv/169/season/1/episode/1","Episode lookup"],
+["GET","/api/v1/search?q=Breaking%20Bad","Search movies and TV (TMDB)"],
 ["GET","/api/v1/tmdb/search/movie?q=Inception","Search movies"],
 ["GET","/api/v1/details/tv/95350","Canonical TV details"],
 ["GET","/api/v1/details/movie/27205","Canonical movie details"],
