@@ -28,7 +28,7 @@ Run verification:
       |
       v
     Service Layer
-      +-- Metadata -> TVmaze primary -> TMDB fallback
+      +-- Metadata / Search / Discovery -> TMDB authoritative source
       +-- Search
       +-- Discovery
       +-- Trailers
@@ -67,7 +67,9 @@ Run verification:
 ## Provider strategy
 
 
-- TMDB: primary metadata provider.
+- TMDB: sole public metadata and artwork provider.
+- TVmaze: legacy schedule/episode compatibility only; never a public artwork source.
+- Vidy: playback integration.
 
 Provider adapters remain replaceable so additional authorized providers can be added later.
 
