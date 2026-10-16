@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../../errors.js";
 import { TmdbClient, TmdbProviderError } from "./client.js";
+import { tmdbImage } from "./normalizer.js";
 import type { TvmazeClient } from "../tvmaze/client.js";
 import type { CanonicalDetailsService } from "../../services/canonical-details.js";
 
@@ -98,7 +99,7 @@ export function createTmdbRoutes(client: TmdbClient, tvmaze?: TvmazeClient, cano
         seasonNumber: result.season_number,
         name: result.name ?? "Season " + result.season_number,
         overview: result.overview ?? null,
-        poster: result.poster_path ?? null,
+        poster: tmdbImage(result.poster_path),
         airDate: result.air_date ?? null,
         episodeCount: result.episode_count ?? result.episodes?.length ?? 0,
         episodes: (result.episodes ?? []).map((episode) => ({
