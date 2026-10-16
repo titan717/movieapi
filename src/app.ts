@@ -211,33 +211,29 @@ export function createApp(config: Config = loadConfig()) {
   app.get("/api/v1/search", async (c) => {
     const q = c.req.query("q")?.trim();
     if (!q) return errorResponse(c, "INVALID_REQUEST", "Query parameter q is required.", 400, c.get("requestId"));
+    if (!tmdb.enabled) return errorResponse(c, "PROVIDER_UNAVAILABLE", "TMDB is not configured.", 503, c.get("requestId"));
+
     const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 20) || 20, 1), 50);
     const page = Math.min(Math.max(Number(c.req.query("page") ?? 1) || 1, 1), 500);
-
     try {
       const [movies, shows] = await Promise.all([
         tmdb.searchMovie(q, page),
         tmdb.searchTv(q, page)
       ]);
       const combined = [
-        ...movies.results.map((item) => ({ score: item.popularity ?? 0, data: normalizeTmdbMovieResult(item) })),
-        ...shows.results.map((item) => ({ score: item.popularity ?? 0, data: normalizeTmdbTvResult(item) }))
-      ].sort((a, b) => b.score - a.score);
-      const start = (page - 1) * limit;
-      const results = combined.slice(0, limit).map(({ score, data }) => ({ score, ...data }));
+        ...movies.results.map((item) => ({ ...normalizeTmdbMovieResult(item), score: item.popularity ?? 0 })),
+        ...shows.results.map((item) => ({ ...normalizeTmdbTvResult(item), score: item.popularity ?? 0 }))
+      ].sort((left, right) => right.score - left.score);
+      const results = combined.slice(0, limit);
       const total = (movies.total_results ?? movies.results.length) + (shows.total_results ?? shows.results.length);
-      return c.json({
-        success: true,
-        data: {
-          query: q,
-          results,
-          source: "tmdb",
-          pagination: { page, limit, total, hasNext: page < Math.max(movies.total_pages ?? 1, shows.total_pages ?? 1) || start + results.length < total }
-        }
-      });
+      const hasNext = page < Math.max(movies.total_pages ?? 1, shows.total_pages ?? 1);
+      c.header("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      return c.json({ success: true, data: {
+        query: q, results, pagination: { page, limit, total, hasNext }, source: "tmdb"
+      }});
     } catch (error) {
       if (error instanceof TmdbProviderError) {
-        const map = {
+        const map: Record<string, [string, string, 400 | 404 | 429 | 502 | 503 | 504]> = {
           UNCONFIGURED: ["PROVIDER_UNAVAILABLE", "TMDB is not configured.", 503],
           TIMEOUT: ["PROVIDER_TIMEOUT", "TMDB did not respond in time.", 504],
           RATE_LIMIT: ["PROVIDER_RATE_LIMITED", "TMDB rate limited the request.", 429],
@@ -246,11 +242,12 @@ export function createApp(config: Config = loadConfig()) {
           NOT_FOUND: ["MEDIA_NOT_FOUND", "The requested TMDB content was not found.", 404],
           UNAUTHORIZED: ["PROVIDER_AUTH_FAILED", "TMDB authentication failed.", 502],
           CIRCUIT_OPEN: ["PROVIDER_UNAVAILABLE", "TMDB is temporarily unavailable.", 503]
-        } as const;
-        const [code, message, status] = map[error.kind];
-        return errorResponse(c, code, message, status, c.get("requestId"));
+        };
+        const mapped = map[error.kind];
+        if (mapped) return errorResponse(c, mapped[0], mapped[1], mapped[2], c.get("requestId"));
       }
-      return errorResponse(c, "INTERNAL_ERROR", "Unexpected TMDB search error.", 500, c.get("requestId"));
+      log("error", "tmdb_search_failed", { requestId: c.get("requestId"), error: error instanceof Error ? error.message : String(error) });
+      return errorResponse(c, "INTERNAL_ERROR", "Unable to search TMDB.", 500, c.get("requestId"));
     }
   });
 
