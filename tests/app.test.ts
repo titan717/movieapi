@@ -165,6 +165,40 @@ describe("MovieApi Phase 5", () => {
     expect(body.data.shows[0].poster).toContain("https://image.tmdb.org/t/p/original/");
   });
 
+  it("normalizes TMDB season posters and episode stills into image URLs", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (!url.includes("/tv/95350/season/1")) throw new Error("Unexpected upstream request: " + url);
+      return new Response(JSON.stringify({
+        id: 12345,
+        season_number: 1,
+        name: "Season 1",
+        overview: "Season overview",
+        poster_path: "/season-poster.jpg",
+        air_date: "2020-01-01",
+        episode_count: 1,
+        episodes: [{
+          id: 67890,
+          episode_number: 1,
+          season_number: 1,
+          name: "Pilot",
+          overview: "Episode overview",
+          air_date: "2020-01-01",
+          runtime: 45,
+          still_path: "/episode-still.jpg",
+          vote_average: 8.5
+        }]
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }));
+
+    const response = await createApp(base).request("/api/v1/tmdb/tv/95350/season/1");
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.data.poster).toBe("https://image.tmdb.org/t/p/original/season-poster.jpg");
+    expect(body.data.episodes[0].image).toBe("https://image.tmdb.org/t/p/original/episode-still.jpg");
+    expect(JSON.stringify(body)).not.toContain("static.tvmaze.com");
+  });
+
   it("keeps movie and TV search results as distinct media identities", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
