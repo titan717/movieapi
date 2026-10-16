@@ -6,7 +6,7 @@ import { requestId } from "./middleware/request-id.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { rateLimitMiddleware } from "./middleware/rate-limit.js";
 import { log } from "./logger.js";
-import { TvmazeClient } from "./providers/tvmaze/index.js";
+import { TvmazeClient, createTvmazeRoutes } from "./providers/tvmaze/index.js";
 import { TmdbClient, TmdbProviderError, createTmdbRoutes, normalizeTmdbMovieResult, normalizeTmdbTvResult } from "./providers/tmdb/index.js";
 import { findMatchingTmdbTv } from "./providers/tvmaze/fallback.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
