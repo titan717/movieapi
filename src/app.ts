@@ -226,7 +226,7 @@ export function createApp(config: Config = loadConfig()) {
       ].sort((left, right) => right.score - left.score);
       const results = combined.slice(0, limit);
       const total = (movies.total_results ?? movies.results.length) + (shows.total_results ?? shows.results.length);
-      const hasNext = page < Math.max(movies.total_pages ?? 1, shows.total_pages ?? 1);
+      const hasNext = page < Math.max(movies.total_pages ?? 1, shows.total_pages ?? 1) || total > page * limit;
       c.header("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       return c.json({ success: true, data: {
         query: q, results, pagination: { page, limit, total, hasNext }, source: "tmdb"
