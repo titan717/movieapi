@@ -2,25 +2,21 @@
 
 Providers are adapters behind a common interface.
 
-## Metadata
+## Public metadata and artwork: TMDB
 
-### TMDB
+TMDB is the sole source of public movie and TV metadata and artwork. Search, details, discovery, trailers, posters, backdrops, season posters, and episode stills must be normalized from TMDB. Public image URLs use the TMDB image CDN: `https://image.tmdb.org/t/p/{size}{path}`.
 
-TMDB is the sole public metadata and artwork authority for search, discovery, movie and TV details, seasons, episodes, posters, backdrops, and episode stills. Public image URLs use TMDB's image CDN. MovieApi normalizes TMDB responses before exposing them to Panda.fun.
+The unified `/api/v1/search` endpoint searches movies and TV shows through TMDB. TMDB-specific search endpoints remain available for callers that need a single media type.
 
-### TVmaze compatibility
+## Legacy TVmaze compatibility
 
-TVmaze is retained only as an internal compatibility adapter for resolving legacy TVmaze IDs to TMDB IDs for playback. Legacy normalizers deliberately suppress TVmaze image URLs; TVmaze is not a public artwork source. New clients should use the unified `/api/v1/search`, `/api/v1/tmdb/*`, and `/api/v1/details/*` routes.
+TVmaze remains only for legacy schedule/episode compatibility and mapping older TVmaze IDs to TMDB IDs. It is not a public artwork source. Normalized legacy responses must set image fields to `null` unless the artwork has been resolved from TMDB. The legacy `/:id/images` endpoint must resolve a TMDB record and return only TMDB image URLs.
 
-## Playback
+Do not silently fall back to TVmaze posters, stills, or backdrops when TMDB is unavailable. Return a normalized provider error or a missing-record response instead.
 
-### VidCore
+## Playback: Vidy
 
-VidCore is the primary authorized direct-playback integration for Phase 9. MovieApi connects to a separately hosted VidCore resolver through its HTTP API, consumes the successful `play` HLS relay URL, and normalizes it into the common playback source schema. MovieApi does not duplicate the resolver implementation.
-
-### VidSrc
-
-VidSrc is the playback fallback. MovieApi uses its documented embed interface when VidCore is unavailable or does not return a usable source. It is not treated as a metadata authority and is isolated from the TVmaze metadata adapter.
+Vidy remains the playback integration. Metadata-source changes must not alter Vidy embed paths or playback behavior.
 
 ## Provider rules
 
@@ -33,17 +29,3 @@ A provider adapter must:
 5. Return typed internal data.
 6. Never expose secrets in logs.
 7. Remain replaceable without changing the public API.
-
-## Fallback
-
-Fallback is decided by the service/provider manager, not by Panda.fun.
-
-Fallback reasons include:
-
-- TIMEOUT
-- HTTP_ERROR
-- RATE_LIMIT
-- INVALID_RESPONSE
-- MISSING_FIELD
-- NOT_FOUND
-- PROVIDER_UNAVAILABLE
