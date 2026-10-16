@@ -6,7 +6,7 @@ import { requestId } from "./middleware/request-id.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { rateLimitMiddleware } from "./middleware/rate-limit.js";
 import { log } from "./logger.js";
-import { TvmazeClient, createTvmazeRoutes } from "./providers/tvmaze/index.js";
+import { TvmazeClient } from "./providers/tvmaze/index.js";
 import { TmdbClient, TmdbProviderError, createTmdbRoutes, normalizeTmdbMovieResult, normalizeTmdbTvResult } from "./providers/tmdb/index.js";
 import { findMatchingTmdbTv } from "./providers/tvmaze/fallback.js";
 import { DiscoveryService, createDiscoveryRoutes } from "./discovery/index.js";
@@ -201,7 +201,6 @@ export function createApp(config: Config = loadConfig()) {
     data: { version: "0.9.0", apiVersion: "v1", phase: 9 }
   }));
 
-  app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos, canonicalDetails));
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, canonicalDetails));
   app.route("/api/v1/details", createDetailsRoutes(canonicalDetails));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
