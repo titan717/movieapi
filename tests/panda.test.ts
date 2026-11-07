@@ -1,0 +1,72 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createApp } from "../src/app.js";
+import type { Config } from "../src/config.js";
+import { playbackSources, toItem } from "../src/panda/service.js";
+
+const base: Config = {
+  apiKeys: new Set(), authRequired: false, rateLimit: 1000, rateWindowMs: 60_000,
+  tvmaze: { baseUrl: "https://api.tvmaze.com", userAgent: "t", timeoutMs: 1000 },
+  tmdb: { accessToken: "tok", baseUrl: "https://api.themoviedb.org/3", timeoutMs: 1000 },
+  vidy: { baseUrl: "https://vidy.st", moviePath: "/movie/{tmdbId}", tvPath: "/tv/{tmdbId}/{season}/{episode}" },
+  corsOrigin: "*", port: 3000
+};
+afterEach(() => vi.unstubAllGlobals());
+const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
+
+describe("panda aggregation", () => {
+  it("normalizes list items with sized artwork and genre names", () => {
+    const item = toItem({ id: 5, title: "X", release_date: "2024-02-01", poster_path: "/p.jpg", backdrop_path: "/b.jpg", genre_ids: [28, 18], vote_average: 7.26, original_language: "ml" });
+    expect(item).toMatchObject({ id: "movie:5", type: "movie", year: 2024, rating: 7.3, poster: "https://image.tmdb.org/t/p/w342/p.jpg", genres: ["Action", "Drama"], language: "ml" });
+  });
+
+  it("builds a full title payload with logo, certification and recommendations", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/movie/414906?")) return json({ id: 414906, title: "The Batman", release_date: "2022-03-01", runtime: 177, poster_path: "/p.jpg", backdrop_path: "/b.jpg", genres: [{ id: 80, name: "Crime" }], original_language: "en", spoken_languages: [{ english_name: "English" }, { english_name: "Hindi" }],
+        images: { logos: [{ iso_639_1: "en", file_path: "/logo.png" }] }, release_dates: { results: [{ iso_3166_1: "US", release_dates: [{ certification: "PG-13" }] }] },
+        credits: { cast: [{ id: 1, name: "Robert Pattinson", character: "Bruce", profile_path: "/r.jpg" }], crew: [{ job: "Director", name: "Matt Reeves" }] },
+        videos: { results: [{ site: "YouTube", key: "abc", name: "Trailer", type: "Trailer", official: true }] },
+        recommendations: { results: [{ id: 155, title: "The Dark Knight", poster_path: "/dk.jpg" }] }, similar: { results: [{ id: 155, title: "The Dark Knight", poster_path: "/dk.jpg" }] } });
+      return json({});
+    }));
+    const res = await createApp(base).request("/api/v1/panda/title/movie/414906");
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data.logo).toBe("https://image.tmdb.org/t/p/w500/logo.png");
+    expect(body.data.certification).toBe("PG-13");
+    expect(body.data.languages).toEqual(["English", "Hindi"]);
+    expect(body.data.videos[0].key).toBe("abc");
+    expect(body.data.moreLikeThis).toHaveLength(1);
+    expect(body.data.directors).toEqual(["Matt Reeves"]);
+  });
+
+  it("returns both providers for TV playback using TMDB ids directly", async () => {
+    const res = await createApp(base).request("/api/v1/panda/play/tv/1399?s=2&e=3&t=120");
+    const body = await res.json();
+    expect(body.data.sources.map((s: any) => s.id)).toEqual(["cinesrc", "vidsrc", "vidsrc-mirror"]);
+    expect(body.data.sources[0].url).toContain("cinesrc.st/embed/tv/1399?s=2&e=3");
+    expect(body.data.sources[0].url).toContain("t=120");
+    expect(body.data.sources[1].url).toContain("vidsrc.sh/embed/tv/1399/2/3");
+    expect(body.data.sources[1].url).toContain("startAt=120");
+  });
+
+  it("rejects TV playback without season/episode", async () => {
+    const res = await createApp(base).request("/api/v1/panda/play/tv/1399");
+    expect(res.status).toBe(400);
+  });
+
+  it("multi search filters out people and artless results", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ page: 1, total_pages: 1, results: [
+      { id: 1, media_type: "person", name: "Someone" },
+      { id: 2, media_type: "tv", name: "Show", poster_path: "/s.jpg", first_air_date: "2020-01-01" },
+      { id: 3, media_type: "movie", title: "No Art" }
+    ] })));
+    const res = await createApp(base).request("/api/v1/panda/search?q=show");
+    const body = await res.json();
+    expect(body.data.results.map((r: any) => r.id)).toEqual(["tv:2"]);
+  });
+
+  it("playbackSources omits start offsets under 5 seconds", () => {
+    expect(playbackSources("movie", 1, { start: 2 })[0].url).not.toContain("&t=");
+  });
+});

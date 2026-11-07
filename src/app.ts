@@ -15,6 +15,8 @@ import { TmdbVideoClient, createTmdbVideoRoutes } from "./providers/tmdb/index.j
 import { VidyProvider, createPlaybackRoutes } from "./providers/playback/index.js";
 import { CanonicalDetailsService } from "./services/canonical-details.js";
 import { createDetailsRoutes } from "./details/routes.js";
+import { PandaService } from "./panda/service.js";
+import { createPandaRoutes } from "./panda/routes.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -77,6 +79,27 @@ const OPENAPI_YAML = [
   "  /recommendations/{id}:",
   "    get:",
   "      summary: Recommendations",
+  "  /panda/page/{kind}:",
+  "    get:",
+  "      summary: Panda hero and rails for home, movies or tv",
+  "  /panda/title/{type}/{id}:",
+  "    get:",
+  "      summary: Full title payload with logo, certification, cast, seasons, videos and recommendations",
+  "  /panda/title/tv/{id}/season/{season}:",
+  "    get:",
+  "      summary: Season episodes with stills",
+  "  /panda/search:",
+  "    get:",
+  "      summary: Multi search across movies and TV",
+  "  /panda/discover/{type}:",
+  "    get:",
+  "      summary: Discover by genre, language, country and sort",
+  "  /panda/top10/{lang}:",
+  "    get:",
+  "      summary: Top 10 titles for a language",
+  "  /panda/play/{type}/{id}:",
+  "    get:",
+  "      summary: CineSrc and VidSrc playback sources",
   "  /home:",
   "    get:",
   "      summary: Panda.fun homepage discovery aggregation",
@@ -260,6 +283,7 @@ export function createApp(config: Config = loadConfig()) {
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos, canonicalDetails));
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, canonicalDetails));
   app.route("/api/v1/details", createDetailsRoutes(canonicalDetails));
+  app.route("/api/v1/panda", createPandaRoutes(new PandaService(tmdb)));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));

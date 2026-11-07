@@ -119,6 +119,10 @@ export class TmdbClient {
   getTvSeason(id: number, season: number): Promise<z.infer<typeof tmdbTvSeasonSchema>> {
     return this.get(`/tv/${id}/season/${season}`, tmdbTvSeasonSchema, 600_000, 3_600_000);
   }
+  /** Untyped TMDB GET used by the Panda aggregation layer (shares cache, retry and circuit breaker). */
+  raw(path: string, ttlMs = 600_000, staleTtlMs = 3_600_000): Promise<any> {
+    return this.get(path, z.any(), ttlMs, staleTtlMs);
+  }
   findByExternalId(externalId: string, externalSource = "imdb_id") {
     return this.get(`/find/${encodeURIComponent(externalId)}?external_source=${encodeURIComponent(externalSource)}`, tmdbFindSchema, 300_000, 900_000);
   }
