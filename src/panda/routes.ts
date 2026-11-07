@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../errors.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
-import { PandaService, playbackSources, type MediaType } from "./service.js";
+import { PandaService, playbackSources, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -26,9 +26,9 @@ export function createPandaRoutes(service: PandaService) {
 
   app.get("/page/:kind", async (c) => {
     const kind = c.req.param("kind");
-    if (kind !== "home" && kind !== "movies" && kind !== "tv") return errorResponse(c, "INVALID_REQUEST", "kind must be home, movies or tv.", 400, c.get("requestId"));
+    if (!PANDA_PAGE_KINDS.includes(kind as PandaPageKind)) return errorResponse(c, "INVALID_REQUEST", "kind must be home, movies, tv, kids or new.", 400, c.get("requestId"));
     const g = guard(c); if (g) return g;
-    try { cache(c, 300); return c.json({ success: true, data: await service.page(kind) }); } catch (e) { return fail(c, e); }
+    try { cache(c, 300); return c.json({ success: true, data: await service.page(kind as PandaPageKind) }); } catch (e) { return fail(c, e); }
   });
 
   app.get("/title/:type/:id", async (c) => {
@@ -65,7 +65,8 @@ export function createPandaRoutes(service: PandaService) {
       country: clean(c.req.query("country"), /^[A-Z]{2}$/),
       provider: clean(c.req.query("provider"), /^[0-9|]{1,20}$/),
       sort: sortRaw === "new" ? (type === "movie" ? "primary_release_date.desc" : "first_air_date.desc") : clean(sortRaw, /^(popularity|vote_average|primary_release_date|first_air_date|revenue)\.(asc|desc)$/),
-      minVotes: sortRaw === "new" ? 20 : undefined
+      minVotes: sortRaw === "new" ? 20 : sortRaw === "airing" ? 10 : undefined,
+      airing: type === "tv" && sortRaw === "airing"
     };
     const g = guard(c); if (g) return g;
     try { cache(c, 600); return c.json({ success: true, data: await service.discover(type, opts) }); } catch (e) { return fail(c, e); }

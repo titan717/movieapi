@@ -81,7 +81,7 @@ const OPENAPI_YAML = [
   "      summary: Recommendations",
   "  /panda/page/{kind}:",
   "    get:",
-  "      summary: Panda hero and rails for home, movies or tv",
+  "      summary: Panda hero and rails for home, movies, tv, kids or new (New & Hot)",
   "  /panda/title/{type}/{id}:",
   "    get:",
   "      summary: Full title payload with logo, certification, cast, seasons, videos and recommendations",

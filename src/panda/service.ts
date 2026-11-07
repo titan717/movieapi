@@ -39,6 +39,9 @@ const GENRES: Record<number, string> = {
   10762: "Kids", 10763: "News", 10764: "Reality", 10765: "Sci-Fi & Fantasy", 10766: "Soap", 10767: "Talk", 10768: "War & Politics"
 };
 
+export type PandaPageKind = "home" | "movies" | "tv" | "kids" | "new";
+export const PANDA_PAGE_KINDS: PandaPageKind[] = ["home", "movies", "tv", "kids", "new"];
+
 export const LANGUAGES: Record<string, string> = {
   en: "English", hi: "Hindi", ml: "Malayalam", ta: "Tamil", te: "Telugu", kn: "Kannada", bn: "Bengali", mr: "Marathi",
   ko: "Korean", ja: "Japanese", es: "Spanish", fr: "French", de: "German", it: "Italian", zh: "Chinese", pt: "Portuguese",
@@ -103,7 +106,7 @@ function videos(raw: any) {
     .map((v) => ({ key: v.key as string, name: v.name as string, type: v.type as string, official: Boolean(v.official), thumbnail: `https://i.ytimg.com/vi/${v.key}/hqdefault.jpg`, publishedAt: v.published_at ?? null }));
 }
 
-export type DiscoverOptions = { genre?: string; lang?: string; sort?: string; page?: number; provider?: string; region?: string; country?: string; minVotes?: number; from?: string; to?: string };
+export type DiscoverOptions = { genre?: string; lang?: string; sort?: string; page?: number; provider?: string; region?: string; country?: string; minVotes?: number; from?: string; to?: string; airing?: boolean };
 
 export class PandaService {
   private readonly cache = new MemoryCache<unknown>(400);
@@ -205,7 +208,9 @@ export class PandaService {
         include_adult: "false", language: "en-US", page: o.page ?? 1, sort_by: o.sort ?? "popularity.desc",
         with_genres: o.genre, with_original_language: o.lang, with_watch_providers: o.provider, watch_region: o.provider ? o.region ?? "IN" : undefined,
         with_origin_country: o.country, "vote_count.gte": o.minVotes ?? (o.sort?.startsWith("vote_average") ? 200 : 5),
-        [`${dateKey}.gte`]: o.from, [`${dateKey}.lte`]: o.to ?? new Date().toISOString().slice(0, 10)
+        [`${dateKey}.gte`]: o.from, [`${dateKey}.lte`]: o.to ?? new Date().toISOString().slice(0, 10),
+        "air_date.gte": o.airing ? new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10) : undefined,
+        "air_date.lte": o.airing ? new Date().toISOString().slice(0, 10) : undefined
       })}`);
       const results = (raw.results ?? []).map((r: any) => toItem(r, type)).filter((r: PandaItem | null): r is PandaItem => Boolean(r && r.poster));
       return { type, page: raw.page ?? 1, totalPages: Math.min(raw.total_pages ?? 1, 500), results };
@@ -235,7 +240,7 @@ export class PandaService {
   }
 
   /** Hero spotlight + curated rails for a page (home, movies, tv). */
-  page(kind: "home" | "movies" | "tv") {
+  page(kind: PandaPageKind) {
     return this.cached(`page:${kind}`, async () => {
       const yearAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 120).toISOString().slice(0, 10);
       type RailDef = { id: string; title: string; style?: "poster" | "landscape" | "top10" | "shows-watched"; load: () => Promise<PandaItem[]>; link?: string };
@@ -278,9 +283,25 @@ export class PandaService {
           { id: "scifi", title: "Sci-Fi & Fantasy", load: d("tv", { genre: "10765", minVotes: 300 }), link: "/browse/tv?genre=10765" },
           { id: "reality", title: "Reality TV", load: d("tv", { genre: "10764", minVotes: 20 }), link: "/browse/tv?genre=10764" },
           { id: "top-rated", title: "Top Rated Shows", load: d("tv", { sort: "vote_average.desc", minVotes: 1500 }), link: "/browse/tv?sort=vote_average.desc" }
+        ],
+        kids: [
+          { id: "animated", title: "Animated Favourites", load: d("movie", { genre: "16", minVotes: 500 }), link: "/browse/movie?genre=16" },
+          { id: "kids-tv", title: "Kids Shows", load: d("tv", { genre: "10762", minVotes: 20 }), link: "/browse/tv?genre=10762" },
+          { id: "family", title: "Family Movie Night", load: d("movie", { genre: "10751", minVotes: 300 }), link: "/browse/movie?genre=10751" },
+          { id: "cartoons", title: "Cartoon Series", load: d("tv", { genre: "16,10762", minVotes: 10 }), link: "/browse/tv?genre=16,10762" },
+          { id: "adventure", title: "Family Adventures", load: d("movie", { genre: "10751,12", minVotes: 200 }), link: "/browse/movie?genre=10751,12" },
+          { id: "new-animated", title: "New Animated Movies", load: d("movie", { genre: "16", from: yearAgo, minVotes: 10 }), link: "/browse/movie?genre=16&sort=new" }
+        ],
+        new: [
+          { id: "coming-soon", title: "Coming Soon", style: "landscape", load: () => this.upcoming() },
+          { id: "everyone", title: "Everyone's Watching", load: () => this.trending("all", "week").then((r) => r.results), link: "/browse/trending" },
+          { id: "airing-today", title: "New Episodes Today", style: "landscape", load: () => this.tmdb.raw("/tv/airing_today?language=en-US", 600_000).then((r: any) => (r.results ?? []).map((x: any) => toItem(x, "tv")).filter((x: PandaItem | null) => x?.backdrop)), link: "/browse/tv?sort=airing" },
+          { id: "new-movies", title: "Fresh Movie Releases", load: d("movie", { from: yearAgo, minVotes: 30 }), link: "/browse/movie?sort=new" },
+          { id: "new-shows", title: "New Shows", load: d("tv", { from: yearAgo, minVotes: 10 }), link: "/browse/tv?sort=new" }
         ]
       };
-      const heroSource = kind === "home" ? this.trending("all", "day").then((r) => r.results)
+      const heroSource = kind === "home" || kind === "new" ? this.trending("all", kind === "new" ? "week" : "day").then((r) => r.results)
+        : kind === "kids" ? this.discover("movie", { genre: "16", minVotes: 500 }).then((r) => r.results.filter((i: PandaItem) => i.backdrop))
         : this.trending(kind === "movies" ? "movie" : "tv", "day").then((r) => r.results);
       const [heroRaw, ...railItems] = await Promise.all([heroSource.catch(() => [] as PandaItem[]), ...defs[kind].map((r) => r.load().catch(() => [] as PandaItem[]))]);
       const hero = (await this.withLogos((heroRaw as PandaItem[]).filter((i: PandaItem) => i.backdrop).slice(0, 8)));
@@ -289,6 +310,17 @@ export class PandaService {
         .filter((r) => r.items.length > 0);
       return { kind, hero, rails };
     }, 900_000);
+  }
+
+  /** Upcoming theatrical releases (future dates only) for New & Hot. */
+  upcoming() {
+    return this.cached("upcoming", async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const raw = await this.tmdb.raw("/movie/upcoming?language=en-US&region=IN", 3_600_000);
+      return (raw.results ?? []).map((x: any) => toItem(x, "movie"))
+        .filter((x: PandaItem | null): x is PandaItem => Boolean(x && x.backdrop && x.releaseDate && x.releaseDate >= today))
+        .sort((a: PandaItem, b: PandaItem) => (a.releaseDate ?? "").localeCompare(b.releaseDate ?? ""));
+    }, 3_600_000);
   }
 
   genres() {

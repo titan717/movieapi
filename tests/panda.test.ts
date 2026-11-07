@@ -69,4 +69,31 @@ describe("panda aggregation", () => {
   it("playbackSources omits start offsets under 5 seconds", () => {
     expect(playbackSources("movie", 1, { start: 2 })[0].url).not.toContain("&t=");
   });
+  it("serves kids and new page kinds and rejects unknown kinds", async () => {
+    const future = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+    const past = "2001-01-01";
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/movie/upcoming")) return json({ results: [
+        { id: 1, title: "Soon", release_date: future, poster_path: "/a.jpg", backdrop_path: "/b.jpg" },
+        { id: 2, title: "Old", release_date: past, poster_path: "/a.jpg", backdrop_path: "/b.jpg" }] });
+      if (url.includes("/images")) return json({ logos: [] });
+      return json({ results: [{ id: 9, title: "Toon", release_date: "2020-01-01", poster_path: "/p.jpg", backdrop_path: "/b.jpg", genre_ids: [16] }] });
+    }));
+    const app = createApp(base);
+    const kids = await (await app.request("/api/v1/panda/page/kids")).json();
+    expect(kids.data.kind).toBe("kids");
+    expect(kids.data.rails.length).toBeGreaterThan(0);
+    const fresh = await (await app.request("/api/v1/panda/page/new")).json();
+    const soon = fresh.data.rails.find((r: { id: string }) => r.id === "coming-soon");
+    expect(soon.items.map((i: { title: string }) => i.title)).toEqual(["Soon"]);
+    expect((await app.request("/api/v1/panda/page/bogus")).status).toBe(400);
+  });
+
+  it("discover sort=airing adds an air-date window for tv", async () => {
+    const fetchMock = vi.fn(async () => json({ results: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await createApp(base).request("/api/v1/panda/discover/tv?sort=airing");
+    expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain("air_date.gte=");
+  });
 });
