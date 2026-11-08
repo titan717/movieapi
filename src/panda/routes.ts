@@ -155,6 +155,18 @@ export function createPandaRoutes(service: PandaService) {
     try { cache(c, 1800); return c.json({ success: true, data: { entries: await service.calendar(refs) } }); } catch (e) { return fail(c, e); }
   });
 
+  app.get("/collection/:id", async (c) => {
+    const id = int(c.req.param("id"));
+    if (!id) return errorResponse(c, "INVALID_MEDIA_ID", "id must be a positive TMDB collection id.", 400, c.get("requestId"));
+    const g = guard(c); if (g) return g;
+    try {
+      const data = await service.collection(id);
+      if (!data) return errorResponse(c, "MEDIA_NOT_FOUND", "Collection not found or has fewer than two titles.", 404, c.get("requestId"));
+      cache(c, 3600);
+      return c.json({ success: true, data });
+    } catch (e) { return fail(c, e); }
+  });
+
   app.get("/release/:tag", async (c) => {
     const tag = c.req.param("tag");
     if (tag !== "latest" && !isReleaseTag(tag)) return errorResponse(c, "INVALID_REQUEST", "tag must be latest or vX.Y.Z.", 400, c.get("requestId"));

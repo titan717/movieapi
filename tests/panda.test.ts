@@ -181,4 +181,19 @@ describe("details enrichment (app v1.1.2)", () => {
     expect(body.data.knownFor.map((k: { title: string; role: string }) => `${k.title}:${k.role}`)).toEqual(["Forrest Gump:Forrest Gump", "Toy Story:Woody (voice)"]);
     expect((await createApp(base).request("/api/v1/panda/person/abc")).status).toBe(400);
   });
+  it("serves a collection page in release order and 404s for single-part collections", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/collection/263?")) return json({ id: 263, name: "The Dark Knight Collection", overview: "Batman.", poster_path: "/c.jpg", backdrop_path: "/cb.jpg",
+        parts: [{ id: 49026, title: "The Dark Knight Rises", release_date: "2012-07-17", poster_path: "/r.jpg" }, { id: 272, title: "Batman Begins", release_date: "2005-06-10", poster_path: "/b.jpg" }] });
+      if (url.includes("/collection/7?")) return json({ id: 7, name: "Solo", parts: [{ id: 1, title: "One", poster_path: "/o.jpg" }] });
+      return json({});
+    }));
+    const body = await (await createApp(base).request("/api/v1/panda/collection/263")).json();
+    expect(body.data.name).toBe("The Dark Knight Collection");
+    expect(body.data.backdrop).toContain("/cb.jpg");
+    expect(body.data.parts.map((p: { title: string }) => p.title)).toEqual(["Batman Begins", "The Dark Knight Rises"]);
+    expect((await createApp(base).request("/api/v1/panda/collection/7")).status).toBe(404);
+    expect((await createApp(base).request("/api/v1/panda/collection/x")).status).toBe(400);
+  });
 });
