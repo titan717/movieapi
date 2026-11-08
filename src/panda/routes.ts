@@ -3,7 +3,7 @@ import type { Context } from "hono";
 import { errorResponse } from "../errors.js";
 import { log } from "../logger.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
-import { PandaService, playbackSources, sourceHealth, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
+import { PandaService, playbackSources, sourceHealth, skipSegments, isImdbId, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -137,6 +137,14 @@ export function createPandaRoutes(service: PandaService) {
     const quality = c.req.query("quality");
     cache(c, 3600);
     return c.json({ success: true, data: { type, tmdbId: id, season: season ?? null, episode: episode ?? null, sources: playbackSources(type, id, { season, episode, start: Number.isFinite(start) ? start : 0, quality, color: color && /^[0-9a-fA-F]{6}$/.test(color) ? color : undefined }) } });
+  });
+
+  app.get("/segments/:imdb", async (c) => {
+    const imdb = c.req.param("imdb"); const season = int(c.req.query("s")); const episode = int(c.req.query("e"));
+    if (!isImdbId(imdb) || season === null || episode === null) return errorResponse(c, "INVALID_MEDIA_ID", "segments needs an IMDb id (tt…) and optional s/e.", 400, c.get("requestId"));
+    const data = await skipSegments(imdb, season ?? null, episode ?? null);
+    cache(c, data.intro || data.recap || data.credits ? 86400 : 3600);
+    return c.json({ success: true, data });
   });
 
   app.get("/sources/health", async (c) => {

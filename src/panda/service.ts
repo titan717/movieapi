@@ -550,3 +550,41 @@ export async function sourceHealth(fetchImpl: typeof fetch = fetch, now = Date.n
   healthCache = { at: now, value };
   return value;
 }
+
+/* ---------------- Skip markers (Player 2.0) ---------------- */
+
+export interface Segment { start: number; end: number }
+export interface SkipSegments { imdbId: string; season: number | null; episode: number | null; intro: Segment | null; recap: Segment | null; credits: Segment | null; source: "introdb" }
+
+const INTRODB = "https://api.introdb.app/segments";
+const segCache = new Map<string, { at: number; value: SkipSegments }>();
+export const isImdbId = (v: string | undefined): v is string => typeof v === "string" && /^tt\d{5,10}$/.test(v);
+
+function seg(raw: any): Segment | null {
+  const s = Number(raw?.start_sec), e = Number(raw?.end_sec);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || e <= s || s < 0) return null;
+  if (raw?.confidence !== undefined && Number(raw.confidence) < 0.5) return null;
+  return { start: s, end: e };
+}
+
+/** Community intro / recap / credits markers from IntroDB (the same data CineSrc's own skip button uses). */
+export async function skipSegments(imdbId: string, season: number | null, episode: number | null, fetchImpl: typeof fetch = fetch, now = Date.now()): Promise<SkipSegments> {
+  const key = `${imdbId}:${season ?? ""}:${episode ?? ""}`;
+  const hit = segCache.get(key);
+  if (hit && now - hit.at < 6 * 3_600_000) return hit.value;
+  const empty: SkipSegments = { imdbId, season, episode, intro: null, recap: null, credits: null, source: "introdb" };
+  const u = new URL(INTRODB);
+  u.searchParams.set("imdb_id", imdbId);
+  if (season && episode) { u.searchParams.set("season", String(season)); u.searchParams.set("episode", String(episode)); }
+  let value = empty;
+  try {
+    const res = await fetchImpl(u.toString(), { signal: AbortSignal.timeout(4000), headers: { accept: "application/json", "user-agent": "Mozilla/5.0 (PandaSegments)" } });
+    if (res.ok) {
+      const raw: any = await res.json();
+      value = { ...empty, intro: raw?.no_intro ? null : seg(raw?.intro), recap: raw?.no_recap ? null : seg(raw?.recap), credits: raw?.no_outro ? null : seg(raw?.outro) };
+    } else { await res.body?.cancel().catch(() => undefined); }
+  } catch { /* markers are optional; the player falls back to learned intros */ }
+  segCache.set(key, { at: now, value });
+  if (segCache.size > 2000) segCache.delete(segCache.keys().next().value as string);
+  return value;
+}
