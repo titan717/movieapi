@@ -151,6 +151,26 @@ export function personPayload(raw: any) {
 
 export type DiscoverOptions = { genre?: string; lang?: string; sort?: string; page?: number; provider?: string; region?: string; country?: string; minVotes?: number; from?: string; to?: string; airing?: boolean };
 
+export const CALENDAR_MAX = 40;
+export const CALENDAR_PAST_DAYS = 30;
+export interface CalendarEpisode { season: number; episode: number; name: string | null; airDate: string; still: string | null; runtime: number | null }
+export interface CalendarEntry { item: PandaItem; status: string | null; lastEpisode: { season: number; episode: number; name: string | null; airDate: string | null } | null; nextEpisode: { season: number; episode: number; name: string | null; airDate: string | null } | null; episodes: CalendarEpisode[] }
+
+/** Parses "tv:1396,movie:550" (deduplicated, at most CALENDAR_MAX). Returns null when malformed. */
+export function parseCalendarIds(v: string | undefined): { type: MediaType; id: number }[] | null {
+  if (!v) return null;
+  const out: { type: MediaType; id: number }[] = [];
+  const seen = new Set<string>();
+  for (const part of v.split(",")) {
+    const m = /^(movie|tv):([1-9][0-9]{0,8})$/.exec(part.trim());
+    if (!m) return null;
+    if (seen.has(m[0])) continue;
+    seen.add(m[0]);
+    out.push({ type: m[1] as MediaType, id: Number(m[2]) });
+  }
+  return out.length && out.length <= CALENDAR_MAX ? out : null;
+}
+
 export class PandaService {
   private readonly cache = new MemoryCache<unknown>(400);
   constructor(private readonly tmdb: TmdbClient) {}
@@ -435,6 +455,33 @@ export class PandaService {
         .filter((r) => r.items.length > 0);
       return { kind, hero, rails };
     }, 900_000);
+  }
+
+  /**
+   * Release calendar (v1.1.7): for each followed title, the episodes that aired in the last
+   * `CALENDAR_PAST_DAYS` days and every announced upcoming episode of the current/next season;
+   * movies report their release date. One request for the whole watchlist; each title is cached 3 h.
+   */
+  calendar(refs: { type: MediaType; id: number }[], today = new Date().toISOString().slice(0, 10)) {
+    const from = new Date(Date.parse(today) - CALENDAR_PAST_DAYS * 86_400_000).toISOString().slice(0, 10);
+    return Promise.all(refs.slice(0, CALENDAR_MAX).map((r) => this.cached(`cal:${r.type}:${r.id}`, async () => {
+      const raw = await this.tmdb.raw(`/${r.type}/${r.id}?${this.q({ language: "en-US" })}`, 10_800_000);
+      const item = toItem(raw, r.type);
+      if (!item) return null;
+      const ref = (e: any) => e ? { season: e.season_number, episode: e.episode_number, name: e.name ?? null, airDate: e.air_date ?? null } : null;
+      const entry: CalendarEntry = { item, status: raw.status ?? null, lastEpisode: ref(raw.last_episode_to_air), nextEpisode: ref(raw.next_episode_to_air), episodes: [] };
+      if (r.type === "tv") {
+        const seasons = [...new Set([raw.last_episode_to_air?.season_number, raw.next_episode_to_air?.season_number].filter((n): n is number => Number.isInteger(n) && n > 0))];
+        for (const n of seasons) {
+          const season = await this.tmdb.raw(`/tv/${r.id}/season/${n}?${this.q({ language: "en-US" })}`, 10_800_000).catch(() => null);
+          for (const e of season?.episodes ?? []) {
+            if (!e.air_date) continue;
+            entry.episodes.push({ season: e.season_number, episode: e.episode_number, name: e.name ?? null, airDate: e.air_date, still: img(e.still_path, "w300"), runtime: e.runtime ?? null });
+          }
+        }
+      }
+      return entry;
+    }, 10_800_000).catch(() => null))).then((list) => list.filter((e): e is CalendarEntry => Boolean(e)).map((e) => ({ ...e, episodes: e.episodes.filter((x) => x.airDate >= from) })));
   }
 
   /** Upcoming theatrical releases (future dates only) for New & Hot. */

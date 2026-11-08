@@ -3,7 +3,7 @@ import type { Context } from "hono";
 import { errorResponse } from "../errors.js";
 import { log } from "../logger.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
-import { PandaService, playbackSources, sourceHealth, skipSegments, isImdbId, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
+import { PandaService, playbackSources, sourceHealth, skipSegments, isImdbId, parseCalendarIds, CALENDAR_MAX, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -145,6 +145,13 @@ export function createPandaRoutes(service: PandaService) {
     const data = await skipSegments(imdb, season ?? null, episode ?? null);
     cache(c, data.intro || data.recap || data.credits ? 86400 : 3600);
     return c.json({ success: true, data });
+  });
+
+  app.get("/calendar", async (c) => {
+    const refs = parseCalendarIds(c.req.query("ids"));
+    if (!refs) return errorResponse(c, "INVALID_REQUEST", `ids must be 1–${CALENDAR_MAX} comma-separated type:id pairs (movie:550,tv:1396).`, 400, c.get("requestId"));
+    const g = guard(c); if (g) return g;
+    try { cache(c, 1800); return c.json({ success: true, data: { entries: await service.calendar(refs) } }); } catch (e) { return fail(c, e); }
   });
 
   app.get("/sources/health", async (c) => {
