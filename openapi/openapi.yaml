@@ -373,7 +373,5 @@ components:
 # A playback response includes data.mode:
 # - direct: one or more direct media sources
 # - embed: provider embed only
-# - hybrid: direct source plus provider embed fallback
 # The first source returned by /play is the preferred source.
 # Direct sources must come from a documented or authorized provider interface.
-# VidCore sources are obtained through the separately hosted resolver HTTP API and its play HLS relay URL.

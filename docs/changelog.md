@@ -4,7 +4,7 @@
 
 ### Phase 7 — Playback
 - Added a provider-neutral playback source contract.
-- Added a documented VidSrc embed adapter using TMDB IDs.
+- Added documented CineSrc and Vidy embed adapters using TMDB IDs.
 - Added movie and TV episode source/play endpoints.
 - Added playback provider health information.
 - Kept playback discovery separate from trailer/video metadata.

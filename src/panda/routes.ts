@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../errors.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
-import { PandaService, playbackSources, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
+import { PandaService, playbackSources, sourceHealth, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
 type AppEnv = { Variables: { requestId: string } };
 
@@ -17,7 +17,7 @@ function fail(c: Context<AppEnv>, error: unknown) {
   return errorResponse(c, "INTERNAL_ERROR", "Unexpected Panda aggregation error.", 500, c.get("requestId"));
 }
 
-/** Short CDN cache so Render + browsers can serve stale-while-revalidate. */
+/** Short CDN cache so the Vercel edge + browsers can serve stale-while-revalidate. */
 function cache(c: Context<AppEnv>, seconds: number) { c.header("cache-control", `public, max-age=${seconds}, stale-while-revalidate=${seconds * 10}`); }
 
 export function createPandaRoutes(service: PandaService) {
@@ -101,9 +101,15 @@ export function createPandaRoutes(service: PandaService) {
     const season = int(c.req.query("s")); const episode = int(c.req.query("e")); const start = Number(c.req.query("t") ?? 0);
     if (!isType(type) || !id || season === null || episode === null) return errorResponse(c, "INVALID_MEDIA_ID", "Invalid playback identifiers.", 400, c.get("requestId"));
     if (type === "tv" && (!season || !episode)) return errorResponse(c, "INVALID_EPISODE_ID", "TV playback requires s and e.", 400, c.get("requestId"));
-    const color = c.req.query("color");
+    const color = c.req.query("color")?.replace(/^#/, "");
+    const quality = c.req.query("quality");
     cache(c, 3600);
-    return c.json({ success: true, data: { type, tmdbId: id, season: season ?? null, episode: episode ?? null, sources: playbackSources(type, id, { season, episode, start: Number.isFinite(start) ? start : 0, color: color && /^[0-9a-fA-F]{6}$/.test(color) ? color : undefined }) } });
+    return c.json({ success: true, data: { type, tmdbId: id, season: season ?? null, episode: episode ?? null, sources: playbackSources(type, id, { season, episode, start: Number.isFinite(start) ? start : 0, quality, color: color && /^[0-9a-fA-F]{6}$/.test(color) ? color : undefined }) } });
+  });
+
+  app.get("/sources/health", async (c) => {
+    cache(c, 300);
+    return c.json({ success: true, data: { sources: await sourceHealth() } });
   });
 
   return app;

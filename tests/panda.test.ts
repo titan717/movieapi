@@ -43,11 +43,30 @@ describe("panda aggregation", () => {
   it("returns both providers for TV playback using TMDB ids directly", async () => {
     const res = await createApp(base).request("/api/v1/panda/play/tv/1399?s=2&e=3&t=120");
     const body = await res.json();
-    expect(body.data.sources.map((s: any) => s.id)).toEqual(["cinesrc", "vidsrc", "vidsrc-mirror"]);
+    expect(body.data.sources.map((s: any) => s.id)).toEqual(["cinesrc", "vidy"]);
     expect(body.data.sources[0].url).toContain("cinesrc.st/embed/tv/1399?s=2&e=3");
     expect(body.data.sources[0].url).toContain("t=120");
-    expect(body.data.sources[1].url).toContain("vidsrc.sh/embed/tv/1399/2/3");
-    expect(body.data.sources[1].url).toContain("startAt=120");
+    expect(body.data.sources[0].url).toContain("autonext=false");
+    expect(body.data.sources[1].url).toContain("www.vidy.st/tv/1399/2/3");
+    expect(body.data.sources[1].url).toContain("progress=120");
+    expect(JSON.stringify(body)).not.toMatch(/vidsrc/);
+  });
+
+  it("passes a validated preferred quality to sources that support it", async () => {
+    const res = await createApp(base).request("/api/v1/panda/play/movie/550?quality=720&color=ff0000");
+    const body = await res.json();
+    expect(body.data.sources[0].url).toContain("quality=720");
+    expect(body.data.sources[0].url).toContain("color=%23ff0000");
+    expect(body.data.sources[1].url).not.toContain("quality");
+    const bad = await (await createApp(base).request("/api/v1/panda/play/movie/550?quality=9999")).json();
+    expect(bad.data.sources[0].url).not.toContain("quality");
+  });
+
+  it("reports source health for every registered adapter", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (u: string) => new Response("<html></html>", { status: String(u).includes("vidy") ? 503 : 200 })));
+    const res = await createApp(base).request("/api/v1/panda/sources/health");
+    const body = await res.json();
+    expect(body.data.sources.map((s: any) => [s.id, s.state])).toEqual([["cinesrc", "healthy"], ["vidy", "down"]]);
   });
 
   it("rejects TV playback without season/episode", async () => {

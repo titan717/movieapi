@@ -27,7 +27,7 @@ Each phase must be implemented, tested, documented, and verified before the next
 
 1. TVmaze — primary metadata provider
 2. TMDB — fallback/enrichment provider
-3. VidSrc — playback provider
+3. CineSrc and Vidy — playback providers
 
 Provider-specific behavior is isolated behind adapters.
 

@@ -344,21 +344,84 @@ export class PandaService {
   }
 }
 
-/** Playback sources for both providers, primary + mirrors. Pure function; no network. */
-export function playbackSources(type: MediaType, id: number, opts: { season?: number; episode?: number; start?: number; color?: string } = {}) {
+/**
+ * Source registry: every adapter builds its embed URL from TMDB ids (no network), declares its
+ * capabilities and a probe URL used by the background health check. Order = default ranking.
+ * Only the two providers chosen for Panda are registered: CineSrc (cinesrc.st) and Vidy (vidy.st).
+ */
+export type SourceAdapter = {
+  id: "cinesrc" | "vidy";
+  label: string;
+  origin: string;
+  events: "cinesrc" | "vidy";
+  capabilities: { commands: boolean; start: boolean; quality: boolean; autonext: boolean; hideControls: boolean };
+  build: (type: MediaType, id: number, o: { s: number; e: number; start?: number; color: string; quality?: string }) => string;
+  probe: string;
+};
+
+export const SOURCE_ADAPTERS: SourceAdapter[] = [
+  {
+    id: "cinesrc", label: "CineSrc", origin: "https://cinesrc.st", events: "cinesrc",
+    capabilities: { commands: true, start: true, quality: true, autonext: true, hideControls: true },
+    build: (type, id, o) => {
+      const u = new URL(type === "movie" ? `https://cinesrc.st/embed/movie/${id}` : `https://cinesrc.st/embed/tv/${id}`);
+      if (type === "tv") { u.searchParams.set("s", String(o.s)); u.searchParams.set("e", String(o.e)); }
+      u.searchParams.set("autoplay", "true");
+      u.searchParams.set("color", `#${o.color}`);
+      u.searchParams.set("autonext", "false");
+      u.searchParams.set("back", "close");
+      if (o.quality) u.searchParams.set("quality", o.quality);
+      if (o.start) { u.searchParams.set("t", String(o.start)); u.searchParams.set("continueprompt", "false"); }
+      return u.toString();
+    },
+    probe: "https://cinesrc.st/embed/movie/550"
+  },
+  {
+    id: "vidy", label: "Vidy", origin: "https://www.vidy.st", events: "vidy",
+    capabilities: { commands: false, start: true, quality: false, autonext: true, hideControls: false },
+    build: (type, id, o) => {
+      const u = new URL(type === "movie" ? `https://www.vidy.st/movie/${id}` : `https://www.vidy.st/tv/${id}/${o.s}/${o.e}`);
+      u.searchParams.set("autoplay", "true");
+      u.searchParams.set("color", o.color);
+      if (o.start) u.searchParams.set("progress", String(o.start));
+      return u.toString();
+    },
+    probe: "https://www.vidy.st/movie/550"
+  }
+];
+
+/** Playback sources for every registered adapter. Pure function; no network. */
+export function playbackSources(type: MediaType, id: number, opts: { season?: number; episode?: number; start?: number; color?: string; quality?: string } = {}) {
   const color = (opts.color ?? "1f80e0").replace(/^#/, "");
   const start = opts.start && opts.start > 5 ? Math.floor(opts.start) : undefined;
   const s = opts.season ?? 1, e = opts.episode ?? 1;
-  const cine = (host: string) => type === "movie"
-    ? `https://${host}/embed/movie/${id}?autoplay=true&color=%23${color}&autonext=true${start ? `&t=${start}&continueprompt=false` : ""}`
-    : `https://${host}/embed/tv/${id}?s=${s}&e=${e}&autoplay=true&color=%23${color}&autonext=true${start ? `&t=${start}&continueprompt=false` : ""}`;
-  const vidsh = type === "movie"
-    ? `https://vidsrc.sh/embed/movie/${id}?autoplay=1&ds_lang=en${start ? `&startAt=${start}` : ""}`
-    : `https://vidsrc.sh/embed/tv/${id}/${s}/${e}?autoplay=1&autonext=1&ds_lang=en${start ? `&startAt=${start}` : ""}`;
-  const vidto = type === "movie" ? `https://vidsrc.to/embed/movie/${id}` : `https://vidsrc.to/embed/tv/${id}/${s}/${e}`;
-  return [
-    { id: "cinesrc", provider: "cinesrc", label: "CineSrc", url: cine("cinesrc.st"), origin: "https://cinesrc.st", events: "cinesrc", supportsStart: true },
-    { id: "vidsrc", provider: "vidsrc", label: "VidSrc", url: vidsh, origin: "https://vidsrc.sh", events: "vidsrc", supportsStart: true },
-    { id: "vidsrc-mirror", provider: "vidsrc", label: "VidSrc Mirror", url: vidto, origin: "https://vidsrc.to", events: "none", supportsStart: false }
-  ];
+  const quality = opts.quality && /^(2160|1080|720|480)$/.test(opts.quality) ? opts.quality : undefined;
+  return SOURCE_ADAPTERS.map((a) => ({
+    id: a.id, provider: a.id, label: a.label, origin: a.origin, events: a.events,
+    supportsStart: a.capabilities.start, capabilities: a.capabilities,
+    url: a.build(type, id, { s, e, start, color, quality })
+  }));
+}
+
+export type SourceHealth = { id: SourceAdapter["id"]; label: string; state: "healthy" | "degraded" | "down"; status: number | null; latencyMs: number | null; checkedAt: string };
+
+let healthCache: { at: number; value: SourceHealth[] } | null = null;
+
+/** Probes every adapter (GET with a 6 s timeout). Cached for 5 minutes per instance. */
+export async function sourceHealth(fetchImpl: typeof fetch = fetch, now = Date.now()): Promise<SourceHealth[]> {
+  if (healthCache && now - healthCache.at < 300_000) return healthCache.value;
+  const value = await Promise.all(SOURCE_ADAPTERS.map(async (a): Promise<SourceHealth> => {
+    const t0 = Date.now();
+    try {
+      const res = await fetchImpl(a.probe, { redirect: "follow", signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (PandaHealth)" } });
+      const latencyMs = Date.now() - t0;
+      await res.body?.cancel().catch(() => undefined);
+      const state = res.ok ? (latencyMs > 3000 ? "degraded" : "healthy") : res.status === 403 || res.status === 429 ? "degraded" : "down";
+      return { id: a.id, label: a.label, state, status: res.status, latencyMs, checkedAt: new Date().toISOString() };
+    } catch {
+      return { id: a.id, label: a.label, state: "down", status: null, latencyMs: null, checkedAt: new Date().toISOString() };
+    }
+  }));
+  healthCache = { at: now, value };
+  return value;
 }

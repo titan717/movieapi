@@ -71,15 +71,13 @@ Run verification:
 
 Provider adapters remain replaceable so additional authorized providers can be added later.
 
-## VidCore integration
+## Playback sources
 
-MovieAPI connects to a separately hosted VidCore resolver through its documented `/api/resolve` HTTP interface. MovieAPI consumes the resolver's browser-facing `play` HLS relay URL and does not duplicate the resolver implementation.
+Playback uses a small source registry (`src/panda/service.ts`): CineSrc (`cinesrc.st`) and Vidy (`www.vidy.st`), both documented TMDB-id embed players. `GET /api/v1/panda/play/:type/:id` builds the embed URLs (no network) and `GET /api/v1/panda/sources/health` probes each provider (cached 5 minutes).
 
-Configuration:
+## Deployment
 
-
-
-The resolver should run as a persistent Node service rather than as a MovieAPI/Vercel function. Keep its HLS proxy endpoint reachable by Panda.fun when direct browser playback requires it.
+MovieAPI runs on Vercel (`vercel.json`, `index.ts`); the production deployment is `https://apikinoma.vercel.app/api/v1`. CORS defaults to `*` (`MOVIEAPI_CORS_ORIGIN`), which covers the Panda.fun web app and the Android WebView origin `https://appassets.androidplatform.net`.
 
 ## Safety boundary
 

@@ -17,7 +17,7 @@ Service Layer
   +--> Search
   +--> Discovery
   +--> Trailers
-  +--> Playback ----> Provider Manager ----> VidSrc
+  +--> Playback ----> Provider Manager ----> CineSrc / Vidy
   |
   +--> Cache
   +--> Health / Monitoring

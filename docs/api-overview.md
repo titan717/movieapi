@@ -72,7 +72,7 @@ Video metadata is separate from playback. TMDB video responses are normalized wi
 - GET /api/v1/tv/:id/season/:season/episode/:episode/sources
 - GET /api/v1/tv/:id/season/:season/episode/:episode/play
 
-Playback uses a provider-neutral source contract. The initial VidSrc adapter returns documented client-side embed URLs; MovieApi does not scrape player HTML or proxy protected media streams. Source URLs are intentionally not cached as long-lived media objects.
+Playback uses a provider-neutral source contract. The CineSrc and Vidy adapters return documented client-side embed URLs; MovieApi does not scrape player HTML or proxy protected media streams. Source URLs are intentionally not cached as long-lived media objects.
 
 ## Middleware
 

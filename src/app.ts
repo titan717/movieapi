@@ -99,7 +99,7 @@ const OPENAPI_YAML = [
   "      summary: Top 10 titles for a language",
   "  /panda/play/{type}/{id}:",
   "    get:",
-  "      summary: CineSrc and VidSrc playback sources",
+  "      summary: CineSrc and Vidy playback sources",
   "  /home:",
   "    get:",
   "      summary: Panda.fun homepage discovery aggregation",
@@ -261,7 +261,7 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/", (c) => c.json({
     success: true,
-    data: { name: "MovieApi", version: "0.9.0", status: "playback" }
+    data: { name: "MovieApi", version: "0.10.0", status: "playback" }
   }));
 
   app.get("/api/v1/health", (c) => c.json({
@@ -269,7 +269,7 @@ export function createApp(config: Config = loadConfig()) {
     data: {
       status: "healthy",
       service: "movieapi",
-      version: "0.9.0",
+      version: "0.10.0",
       timestamp: new Date().toISOString(),
       providers: { tvmaze: tvmaze.getHealth(), tmdb: tmdb.getHealth(), playback: playback.getHealth() }
     }
@@ -277,7 +277,7 @@ export function createApp(config: Config = loadConfig()) {
 
   app.get("/api/v1/version", (c) => c.json({
     success: true,
-    data: { version: "0.9.0", apiVersion: "v1", phase: 9 }
+    data: { version: "0.10.0", apiVersion: "v1", phase: 9 }
   }));
 
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos, canonicalDetails));

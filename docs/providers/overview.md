@@ -18,36 +18,10 @@ TMDB is the Phase 3 fallback and enrichment provider. TVmaze remains primary for
 
 ## Playback
 
-### VidCore
+### CineSrc
 
-VidCore is the primary authorized direct-playback integration for Phase 9. MovieApi connects to a separately hosted VidCore resolver through its HTTP API, consumes the successful `play` HLS relay URL, and normalizes it into the common playback source schema. MovieApi does not duplicate the resolver implementation.
+CineSrc (`https://cinesrc.st/docs`) is the primary playback provider. Its embed exposes postMessage events and commands (play, pause, seek, volume), so Panda draws its own player chrome on top of it.
 
-### VidSrc
+### Vidy
 
-VidSrc is the playback fallback. MovieApi uses its documented embed interface when VidCore is unavailable or does not return a usable source. It is not treated as a metadata authority and is isolated from the TVmaze metadata adapter.
-
-## Provider rules
-
-A provider adapter must:
-
-1. Validate configuration.
-2. Make bounded requests.
-3. Normalize provider errors.
-4. Validate external responses.
-5. Return typed internal data.
-6. Never expose secrets in logs.
-7. Remain replaceable without changing the public API.
-
-## Fallback
-
-Fallback is decided by the service/provider manager, not by Panda.fun.
-
-Fallback reasons include:
-
-- TIMEOUT
-- HTTP_ERROR
-- RATE_LIMIT
-- INVALID_RESPONSE
-- MISSING_FIELD
-- NOT_FOUND
-- PROVIDER_UNAVAILABLE
+Vidy (`https://vidy.st`) is the fallback playback provider. It posts `PLAYER_EVENT` progress messages to the parent page.
