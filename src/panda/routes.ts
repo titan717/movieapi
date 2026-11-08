@@ -183,7 +183,7 @@ export function createPandaRoutes(service: PandaService) {
       const tracks = await searchSubtitles(imdb, season ?? null, episode ?? null, langs);
       cache(c, tracks.length ? 21600 : 1800);
       return c.json({ success: true, data: { imdbId: imdb, season: season ?? null, episode: episode ?? null, tracks } });
-    } catch (e) { log("warn", "panda.subtitles_failed", { imdb, error: String(e) }); return errorResponse(c, "PROVIDER_UNAVAILABLE", "Subtitles are unavailable right now.", 503, c.get("requestId")); }
+    } catch (e) { log("warn", "panda.subtitles_failed", { imdb, error: String(e) }); return errorResponse(c, "PROVIDER_UNAVAILABLE", `Subtitles are unavailable right now (${String((e as Error)?.message ?? e).slice(0, 80)}).`, 503, c.get("requestId")); }
   });
 
   app.get("/calendar", async (c) => {
