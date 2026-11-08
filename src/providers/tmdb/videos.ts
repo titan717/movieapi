@@ -86,7 +86,7 @@ export class TmdbVideoClient {
                 headers: {
                   accept: "application/json",
                   authorization: `Bearer ${this.options.accessToken}`,
-                  "user-agent": "MovieApi/0.9.0 (Panda.fun)"
+                  "user-agent": "MovieApi/0.10.0 (Panda.fun)"
                 },
                 signal: controller.signal
               }
