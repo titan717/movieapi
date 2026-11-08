@@ -139,6 +139,8 @@ describe("panda aggregation", () => {
     const app = createApp(base);
     const ok = await app.request("/api/v1/panda/report", { method: "POST", body: JSON.stringify({ type: "movie", tmdbId: 550, issue: "noplay", source: "cinesrc", position: 12 }), headers: { "Content-Type": "text/plain" } });
     expect(ok.status).toBe(202);
+    const shield = await app.request("/api/v1/panda/report", { method: "POST", body: JSON.stringify({ type: "tv", tmdbId: 1399, issue: "popups", source: "vidy", position: 0 }), headers: { "Content-Type": "text/plain" } });
+    expect(shield.status).toBe(202);
     const bad = await app.request("/api/v1/panda/report", { method: "POST", body: JSON.stringify({ type: "movie", tmdbId: -1, issue: "x" }) });
     expect(bad.status).toBe(400);
     const junk = await app.request("/api/v1/panda/report", { method: "POST", body: "not json" });

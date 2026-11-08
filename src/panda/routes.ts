@@ -87,8 +87,8 @@ export function createPandaRoutes(service: PandaService) {
     try { cache(c, 600); return c.json({ success: true, data: await service.trending(t as "all" | MediaType, c.req.query("window") === "week" ? "week" : "day", Math.min(page, 50)) }); } catch (e) { return fail(c, e); }
   });
 
-  /** "Report an Issue" from the Panda player. Validated, then written to the structured log (Vercel logs). */
-  const ISSUES = new Set(["noplay", "wrong", "sync", "subs"]);
+  /** "Report an Issue" from the Panda player, plus automatic "popups" signals from the ad shield. Validated, then written to the structured log (Vercel logs). */
+  const ISSUES = new Set(["noplay", "wrong", "sync", "subs", "popups"]);
   app.post("/report", async (c) => {
     let body: Record<string, unknown>;
     try {
