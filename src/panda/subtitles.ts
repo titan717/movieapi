@@ -62,7 +62,7 @@ interface Row { id: string; url: string; lang: string; hi: boolean; downloads: n
 
 const searchCache = new Map<string, { at: number; value: Row[] }>();
 
-/** Best 4 subtitles per language: regular before hearing-impaired, then most downloaded / listed first. */
+/** Best subtitles per language (3 regular + 1 SDH): most downloaded / listed first. */
 export function toTracks(rows: Row[], lang: string): SubtitleTrack[] {
   const out: SubtitleTrack[] = [];
   const list = rows.filter((r) => r.lang === lang).sort((a, b) => Number(a.hi) - Number(b.hi) || b.downloads - a.downloads || a.order - b.order);
@@ -70,6 +70,8 @@ export function toTracks(rows: Row[], lang: string): SubtitleTrack[] {
   for (const r of list) {
     const token = encodeFile(r.url);
     if (!token || seen.has(r.url)) continue;
+    // up to 3 regular tracks and 1 for the deaf and hard of hearing
+    if (out.filter((t) => t.hearingImpaired === r.hi).length >= (r.hi ? 1 : 3)) continue;
     seen.add(r.url);
     const n = out.filter((t) => t.hearingImpaired === r.hi).length + 1;
     out.push({
