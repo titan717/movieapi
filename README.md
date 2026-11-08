@@ -75,6 +75,8 @@ Provider adapters remain replaceable so additional authorized providers can be a
 
 Playback uses a small source registry (`src/panda/service.ts`): CineSrc (`cinesrc.st`) and Vidy (`www.vidy.st`), both documented TMDB-id embed players. `GET /api/v1/panda/play/:type/:id` builds the embed URLs (no network) and `GET /api/v1/panda/sources/health` probes each provider (cached 5 minutes).
 
+`GET /api/v1/panda/wall` returns up to 120 unique trending posters (TMDB `w185`, cached 1 hour) for the Panda "Who's watching" poster wall.
+
 ## Deployment
 
 MovieAPI runs on Vercel (`vercel.json`, `index.ts`); the production deployment is `https://apikinoma.vercel.app/api/v1`. CORS defaults to `*` (`MOVIEAPI_CORS_ORIGIN`), which covers the Panda.fun web app and the Android WebView origin `https://appassets.androidplatform.net`.

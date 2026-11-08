@@ -79,6 +79,11 @@ export function createPandaRoutes(service: PandaService) {
     try { cache(c, 600); return c.json({ success: true, data: await service.trending(t as "all" | MediaType, c.req.query("window") === "week" ? "week" : "day", Math.min(page, 50)) }); } catch (e) { return fail(c, e); }
   });
 
+  app.get("/wall", async (c) => {
+    const g = guard(c); if (g) return g;
+    try { cache(c, 3600); return c.json({ success: true, data: await service.wall() }); } catch (e) { return fail(c, e); }
+  });
+
   app.get("/top10/:lang", async (c) => {
     const lang = c.req.param("lang");
     if (!/^[a-z]{2}$/.test(lang)) return errorResponse(c, "INVALID_REQUEST", "lang must be an ISO 639-1 code.", 400, c.get("requestId"));

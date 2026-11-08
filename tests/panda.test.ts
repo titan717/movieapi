@@ -115,4 +115,23 @@ describe("panda aggregation", () => {
     await createApp(base).request("/api/v1/panda/discover/tv?sort=airing");
     expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain("air_date.gte=");
   });
+
+  it("builds a unique, small-poster wall from trending pages", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const page = Number(new URL(url).searchParams.get("page") ?? 1);
+      const tv = url.includes("/trending/tv/");
+      const results = Array.from({ length: 20 }, (_, k) => ({ id: page * 100 + k, [tv ? "name" : "title"]: `T${k}`, poster_path: `/p${page}${k}.jpg`, backdrop_path: "/b.jpg", media_type: tv ? "tv" : "movie" }));
+      // repeat one id across pages: it must appear only once
+      results[0]!.id = 7;
+      return json({ page, results });
+    }));
+    const res = await createApp(base).request("/api/v1/panda/wall");
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    const ids = body.data.posters.map((p: any) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.length).toBeGreaterThanOrEqual(100);
+    expect(body.data.posters[0].poster).toContain("/w185/");
+  });
 });

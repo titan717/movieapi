@@ -224,6 +224,21 @@ export class PandaService {
     });
   }
 
+  /** Poster wall for "Who's watching": unique, small posters from this week's trending titles. */
+  wall(limit = 120) {
+    return this.cached(`wall:${limit}`, async () => {
+      const pages = await Promise.all(([["movie", 1], ["tv", 1], ["movie", 2], ["tv", 2], ["movie", 3], ["tv", 3]] as const)
+        .map(([t, p]) => this.trending(t, "week", p).then((r) => r.results).catch(() => [] as PandaItem[])));
+      const seen = new Set<string>(); const posters: { id: string; title: string; poster: string }[] = [];
+      // interleave movie/tv pages so neighbouring tiles differ
+      for (let i = 0; i < 20 && posters.length < limit; i++) for (const list of pages) {
+        const it = list[i]; if (!it?.poster || seen.has(it.id)) continue;
+        seen.add(it.id); posters.push({ id: it.id, title: it.title, poster: it.poster.replace("/w342/", "/w185/") });
+      }
+      return { posters: posters.slice(0, limit) };
+    }, 3_600_000);
+  }
+
   /** Top 10 for a language (blueprint "Top 10 in India Today" with language chips). */
   top10(lang: string) {
     return this.cached(`top10:${lang}`, async () => {
