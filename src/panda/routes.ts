@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { errorResponse } from "../errors.js";
 import { log } from "../logger.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
+import { mirrorRelease, isReleaseTag } from "./releases.js";
 import { PandaService, playbackSources, sourceHealth, skipSegments, isImdbId, parseCalendarIds, CALENDAR_MAX, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
 type AppEnv = { Variables: { requestId: string } };
@@ -152,6 +153,17 @@ export function createPandaRoutes(service: PandaService) {
     if (!refs) return errorResponse(c, "INVALID_REQUEST", `ids must be 1–${CALENDAR_MAX} comma-separated type:id pairs (movie:550,tv:1396).`, 400, c.get("requestId"));
     const g = guard(c); if (g) return g;
     try { cache(c, 1800); return c.json({ success: true, data: { entries: await service.calendar(refs) } }); } catch (e) { return fail(c, e); }
+  });
+
+  app.get("/release/:tag", async (c) => {
+    const tag = c.req.param("tag");
+    if (tag !== "latest" && !isReleaseTag(tag)) return errorResponse(c, "INVALID_REQUEST", "tag must be latest or vX.Y.Z.", 400, c.get("requestId"));
+    try {
+      const data = await mirrorRelease(tag);
+      if (!data) return errorResponse(c, "MEDIA_NOT_FOUND", "No such release.", 404, c.get("requestId"));
+      cache(c, 300);
+      return c.json({ success: true, data });
+    } catch (e) { log("warn", "panda.release_mirror_failed", { error: String(e) }); return errorResponse(c, "PROVIDER_UNAVAILABLE", "Release information is unavailable right now.", 503, c.get("requestId")); }
   });
 
   app.get("/sources/health", async (c) => {
