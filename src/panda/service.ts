@@ -264,6 +264,7 @@ export class PandaService {
         home: [
           { id: "trending", title: "Trending Now", load: () => this.trending("all", "day").then((r) => r.results), link: "/browse/trending" },
           { id: "new", title: "New on Panda", load: d("movie", { from: yearAgo, sort: "popularity.desc", minVotes: 30 }), link: "/browse/movie?sort=new" },
+          { id: "coming-soon", title: "Coming Soon", style: "landscape", load: () => this.upcoming(), link: "/new" },
           { id: "latest-tv", title: "Latest TV Episodes", style: "landscape", load: () => this.tmdb.raw("/tv/on_the_air?language=en-US", 600_000).then((r: any) => (r.results ?? []).map((x: any) => toItem(x, "tv")).filter((x: PandaItem | null) => x?.backdrop)), link: "/browse/tv?sort=airing" },
           { id: "indian", title: "Indian Cinema", load: d("movie", { country: "IN", minVotes: 20 }), link: "/browse/movie?country=IN" },
           { id: "love", title: "Love Stories", load: d("movie", { genre: "10749", minVotes: 200 }), link: "/browse/movie?genre=10749" },
