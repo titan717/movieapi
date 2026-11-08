@@ -4,6 +4,7 @@ import { errorResponse } from "../errors.js";
 import { log } from "../logger.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
 import { mirrorRelease, isReleaseTag } from "./releases.js";
+import { searchSubtitles, subtitleFile, parseLangs } from "./subtitles.js";
 import { buckets, rank, recordOutcome, kvConfigured } from "./ranking.js";
 import { PandaService, playbackSources, sourceHealth, skipSegments, isImdbId, parseCalendarIds, CALENDAR_MAX, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
@@ -159,6 +160,30 @@ export function createPandaRoutes(service: PandaService) {
     const data = await skipSegments(imdb, season ?? null, episode ?? null);
     cache(c, data.intro || data.recap || data.credits ? 86400 : 3600);
     return c.json({ success: true, data });
+  });
+
+  /** One subtitle as cleaned WebVTT (ads removed). */
+  app.get("/subtitles/file", async (c) => {
+    const f = c.req.query("f") ?? ""; const enc = (c.req.query("enc") ?? "utf-8").toLowerCase();
+    try {
+      const vtt = await subtitleFile(f, enc);
+      if (vtt === null) return errorResponse(c, "INVALID_REQUEST", "Unknown subtitle file.", 400, c.get("requestId"));
+      c.header("cache-control", "public, max-age=604800, immutable");
+      c.header("content-type", "text/vtt; charset=utf-8");
+      return c.body(vtt);
+    } catch (e) { log("warn", "panda.subtitle_file_failed", { error: String(e) }); return errorResponse(c, "PROVIDER_UNAVAILABLE", "This subtitle could not be downloaded.", 502, c.get("requestId")); }
+  });
+
+  /** External subtitles by IMDb id (+ s/e for episodes) in up to 3 languages (langs=en,es). */
+  app.get("/subtitles/:imdb", async (c) => {
+    const imdb = c.req.param("imdb"); const season = int(c.req.query("s")); const episode = int(c.req.query("e"));
+    const langs = parseLangs(c.req.query("langs"));
+    if (!isImdbId(imdb) || season === null || episode === null || !langs) return errorResponse(c, "INVALID_MEDIA_ID", "subtitles needs an IMDb id (tt…), optional s/e and langs=en,es (max 3).", 400, c.get("requestId"));
+    try {
+      const tracks = await searchSubtitles(imdb, season ?? null, episode ?? null, langs);
+      cache(c, tracks.length ? 21600 : 1800);
+      return c.json({ success: true, data: { imdbId: imdb, season: season ?? null, episode: episode ?? null, tracks } });
+    } catch (e) { log("warn", "panda.subtitles_failed", { imdb, error: String(e) }); return errorResponse(c, "PROVIDER_UNAVAILABLE", "Subtitles are unavailable right now.", 503, c.get("requestId")); }
   });
 
   app.get("/calendar", async (c) => {
