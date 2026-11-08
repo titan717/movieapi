@@ -221,12 +221,14 @@ export class PandaService {
           if (it && (it.poster || it.backdrop)) titles.push(it);
         }
         const seen = new Set<string>();
-        const results = [...titles, ...known].filter((i) => (seen.has(i.id) ? false : (seen.add(i.id), true)));
+        // "tom hanks": when the query is a person's name, their best-known titles lead
+        const personFirst = people.some((n) => similarity(n, q) >= 0.85);
+        const results = (personFirst ? [...known, ...titles] : [...titles, ...known]).filter((i) => (seen.has(i.id) ? false : (seen.add(i.id), true)));
         return { results, totalPages: raw.total_pages ?? 1, page: raw.page ?? page, people };
       };
       const first = await multi(query);
       if (first.results.length || page > 1) {
-        return { query, page: first.page, totalPages: first.totalPages, results: first.results, ...(first.people.length && !first.results.slice(0, 3).some((r) => similarity(r.title, query) > 0.6) ? { people: first.people.slice(0, 3) } : {}) };
+        return { query, page: first.page, totalPages: first.totalPages, results: first.results, ...(first.people.length && !first.results.slice(0, 3).some((r) => similarity(r.title, query) > 0.85) ? { people: first.people.slice(0, 3) } : {}) };
       }
       for (const v of fuzzyVariants(query)) {
         const alt = await multi(v);
