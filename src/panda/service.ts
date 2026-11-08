@@ -6,6 +6,7 @@
  * with pre-sized image URLs so TVs never download `original` artwork for rows.
  */
 import type { TmdbClient } from "../providers/tmdb/client.js";
+import { fuzzyVariants, interpretQuery, similarity } from "./smartSearch.js";
 import { MemoryCache } from "../reliability.js";
 
 export type MediaType = "movie" | "tv";
@@ -192,11 +193,53 @@ export class PandaService {
     });
   }
 
+  /**
+   * Smart search (app v1.1.1): plain requests like "hindi movies" become a discover query; title search also
+   * returns the best-known titles of matching people; a search with no results retries shorter variants and
+   * keeps only close title matches, reporting the corrected title.
+   */
   search(query: string, page = 1) {
     return this.cached(`search:${query.toLowerCase()}:${page}`, async () => {
-      const raw = await this.tmdb.raw(`/search/multi?${this.q({ query, page, include_adult: "false", language: "en-US" })}`, 120_000, 600_000);
-      const results = (raw.results ?? []).map((r: any) => toItem(r)).filter((r: PandaItem | null): r is PandaItem => Boolean(r && (r.poster || r.backdrop)));
-      return { query, page: raw.page ?? page, totalPages: raw.total_pages ?? 1, results };
+      const meant = interpretQuery(query);
+      if (meant) {
+        const d = await this.discover(meant.type, { lang: meant.lang, genre: meant.genre, from: meant.from, to: meant.to, sort: meant.sort, minVotes: meant.minVotes, page });
+        if (d.results.length) return { query, page: d.page, totalPages: d.totalPages, results: d.results, interpreted: meant.label };
+      }
+      const multi = async (q: string) => {
+        const raw = await this.tmdb.raw(`/search/multi?${this.q({ query: q, page, include_adult: "false", language: "en-US" })}`, 120_000, 600_000);
+        const titles: PandaItem[] = [];
+        const known: PandaItem[] = [];
+        const people: string[] = [];
+        for (const r of raw.results ?? []) {
+          if (r.media_type === "person") {
+            if ((r.popularity ?? 0) < 2 || !Array.isArray(r.known_for)) continue;
+            people.push(r.name);
+            for (const k of r.known_for) { const it = toItem(k); if (it && it.poster) known.push(it); }
+            continue;
+          }
+          const it = toItem(r);
+          if (it && (it.poster || it.backdrop)) titles.push(it);
+        }
+        const seen = new Set<string>();
+        const results = [...titles, ...known].filter((i) => (seen.has(i.id) ? false : (seen.add(i.id), true)));
+        return { results, totalPages: raw.total_pages ?? 1, page: raw.page ?? page, people };
+      };
+      const first = await multi(query);
+      if (first.results.length || page > 1) {
+        return { query, page: first.page, totalPages: first.totalPages, results: first.results, ...(first.people.length && !first.results.slice(0, 3).some((r) => similarity(r.title, query) > 0.6) ? { people: first.people.slice(0, 3) } : {}) };
+      }
+      for (const v of fuzzyVariants(query)) {
+        const alt = await multi(v);
+        const close = alt.results
+          .map((r) => ({ r, s: Math.max(similarity(r.title, query), similarity(r.title.slice(0, query.length + 2), query)) }))
+          .filter((x) => x.s >= 0.5)
+          .sort((a, b) => b.s - a.s);
+        if (close.length) {
+          const rest = alt.results.filter((r) => !close.some((c) => c.r.id === r.id));
+          return { query, page: 1, totalPages: 1, results: [...close.map((c) => c.r), ...rest].slice(0, 20), corrected: close[0]!.r.title };
+        }
+      }
+      return { query, page: 1, totalPages: 1, results: [] as PandaItem[] };
     }, 120_000);
   }
 
