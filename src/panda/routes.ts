@@ -39,6 +39,13 @@ export function createPandaRoutes(service: PandaService) {
     try { cache(c, 600); return c.json({ success: true, data: await service.title(type, id) }); } catch (e) { return fail(c, e); }
   });
 
+  app.get("/person/:id", async (c) => {
+    const id = int(c.req.param("id"));
+    if (!id) return errorResponse(c, "INVALID_REQUEST", "id must be a positive TMDB person id.", 400, c.get("requestId"));
+    const g = guard(c); if (g) return g;
+    try { cache(c, 3600); return c.json({ success: true, data: await service.person(id) }); } catch (e) { return fail(c, e); }
+  });
+
   app.get("/title/tv/:id/season/:season", async (c) => {
     const id = int(c.req.param("id")); const season = int(c.req.param("season"));
     if (!id || !season) return errorResponse(c, "INVALID_EPISODE_ID", "id and season must be positive integers.", 400, c.get("requestId"));

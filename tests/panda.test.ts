@@ -145,3 +145,38 @@ describe("panda aggregation", () => {
     expect(junk.status).toBe(400);
   });
 });
+
+describe("details enrichment (app v1.1.2)", () => {
+  it("adds crew with ids, vote count and the movie collection", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/collection/263")) return json({ id: 263, name: "The Dark Knight Collection", parts: [
+        { id: 49026, title: "The Dark Knight Rises", release_date: "2012-07-17", poster_path: "/c.jpg" },
+        { id: 272, title: "Batman Begins", release_date: "2005-06-10", poster_path: "/a.jpg" },
+        { id: 155, title: "The Dark Knight", release_date: "2008-07-16", poster_path: "/b.jpg" }] });
+      if (url.includes("/movie/155?")) return json({ id: 155, title: "The Dark Knight", vote_count: 34000, belongs_to_collection: { id: 263 },
+        credits: { cast: [], crew: [{ id: 9, job: "Producer", name: "Emma Thomas" }, { id: 525, job: "Director", name: "Christopher Nolan" }, { id: 525, job: "Screenplay", name: "Christopher Nolan" }, { id: 947, job: "Original Music Composer", name: "Hans Zimmer" }] } });
+      return json({});
+    }));
+    const body = await (await createApp(base).request("/api/v1/panda/title/movie/155")).json();
+    expect(body.data.voteCount).toBe(34000);
+    expect(body.data.crew.map((c: { name: string; job: string }) => `${c.name}:${c.job}`)).toEqual(["Christopher Nolan:Director", "Hans Zimmer:Music", "Emma Thomas:Producer"]);
+    expect(body.data.collection.name).toBe("The Dark Knight Collection");
+    expect(body.data.collection.parts.map((p: { title: string }) => p.title)).toEqual(["Batman Begins", "The Dark Knight", "The Dark Knight Rises"]);
+  });
+
+  it("builds a person page with known-for titles, skipping talk shows", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ id: 31, name: "Tom Hanks", profile_path: "/t.jpg", biography: "Actor.", birthday: "1956-07-09", known_for_department: "Acting",
+      combined_credits: { cast: [
+        { id: 1, media_type: "tv", name: "The Tonight Show", genre_ids: [10767], vote_count: 9999, poster_path: "/x.jpg", character: "Himself" },
+        { id: 13, media_type: "movie", title: "Forrest Gump", vote_count: 27000, poster_path: "/f.jpg", character: "Forrest Gump" },
+        { id: 862, media_type: "movie", title: "Toy Story", vote_count: 18000, poster_path: "/ts.jpg", character: "Woody (voice)" }],
+        crew: [{ id: 13, media_type: "movie", title: "Forrest Gump", vote_count: 27000, poster_path: "/f.jpg", job: "Producer" }] } })));
+    const res = await createApp(base).request("/api/v1/panda/person/31");
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data.name).toBe("Tom Hanks");
+    expect(body.data.knownFor.map((k: { title: string; role: string }) => `${k.title}:${k.role}`)).toEqual(["Forrest Gump:Forrest Gump", "Toy Story:Woody (voice)"]);
+    expect((await createApp(base).request("/api/v1/panda/person/abc")).status).toBe(400);
+  });
+});

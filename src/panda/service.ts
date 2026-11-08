@@ -107,6 +107,48 @@ function videos(raw: any) {
     .map((v) => ({ key: v.key as string, name: v.name as string, type: v.type as string, official: Boolean(v.official), thumbnail: `https://i.ytimg.com/vi/${v.key}/hqdefault.jpg`, publishedAt: v.published_at ?? null }));
 }
 
+const CREW_JOBS: Record<string, number> = { Director: 0, Creator: 1, Screenplay: 2, Writer: 3, Story: 4, Novel: 5, "Original Music Composer": 6, "Director of Photography": 7, Producer: 8 };
+
+/** Key crew with TMDB ids so the app can open their pages; one entry per person, most important job first. */
+export function crewOf(type: MediaType, raw: any) {
+  const out: { id: number; name: string; job: string; profile: string | null }[] = [];
+  const add = (id: number, name: string, job: string, path: string | null) => { if (id && name && !out.some((c) => c.id === id)) out.push({ id, name, job, profile: img(path, "w185") }); };
+  for (const c of raw.created_by ?? []) add(c.id, c.name, "Creator", c.profile_path ?? null);
+  const crew: any[] = type === "movie" ? raw.credits?.crew ?? [] : (raw.aggregate_credits?.crew ?? []).map((c: any) => ({ ...c, job: c.jobs?.[0]?.job ?? c.job }));
+  crew.filter((c) => c.job in CREW_JOBS).sort((a, b) => CREW_JOBS[a.job]! - CREW_JOBS[b.job]! || (b.popularity ?? 0) - (a.popularity ?? 0))
+    .forEach((c) => add(c.id, c.name, c.job === "Original Music Composer" ? "Music" : c.job === "Director of Photography" ? "Cinematography" : c.job, c.profile_path ?? null));
+  return out.slice(0, 10);
+}
+
+export function personPayload(raw: any) {
+  const seen = new Set<string>();
+  const credits = [...(raw.combined_credits?.cast ?? []), ...(raw.combined_credits?.crew ?? [])]
+    // talk shows and award ceremonies swamp TV credits; keep real roles
+    .filter((c: any) => !(c.media_type === "tv" && (c.genre_ids ?? []).some((g: number) => g === 10767 || g === 10763)) && !/^(himself|herself|self|themselves)\b/i.test(c.character ?? ""))
+    .sort((a: any, b: any) => (b.vote_count ?? 0) - (a.vote_count ?? 0));
+  const knownFor: (PandaItem & { role: string | null })[] = [];
+  for (const c of credits) {
+    const item = toItem(c);
+    if (!item || !item.poster || seen.has(item.id)) continue;
+    seen.add(item.id);
+    knownFor.push({ ...item, role: c.character || c.job || null });
+    if (knownFor.length >= 40) break;
+  }
+  return {
+    id: raw.id as number,
+    name: String(raw.name ?? ""),
+    profile: img(raw.profile_path, "w342"),
+    profileLarge: img(raw.profile_path, "h632"),
+    biography: raw.biography || null,
+    birthday: raw.birthday ?? null,
+    deathday: raw.deathday ?? null,
+    placeOfBirth: raw.place_of_birth ?? null,
+    department: raw.known_for_department ?? null,
+    imdbId: raw.imdb_id ?? raw.external_ids?.imdb_id ?? null,
+    knownFor
+  };
+}
+
 export type DiscoverOptions = { genre?: string; lang?: string; sort?: string; page?: number; provider?: string; region?: string; country?: string; minVotes?: number; from?: string; to?: string; airing?: boolean };
 
 export class PandaService {
@@ -171,9 +213,31 @@ export class PandaService {
         lastEpisode: raw.last_episode_to_air ? { season: raw.last_episode_to_air.season_number, episode: raw.last_episode_to_air.episode_number, name: raw.last_episode_to_air.name, airDate: raw.last_episode_to_air.air_date } : null,
         nextEpisode: raw.next_episode_to_air ? { season: raw.next_episode_to_air.season_number, episode: raw.next_episode_to_air.episode_number, name: raw.next_episode_to_air.name, airDate: raw.next_episode_to_air.air_date } : null,
         videos: videos(raw),
-        moreLikeThis
+        moreLikeThis,
+        voteCount: typeof raw.vote_count === "number" ? raw.vote_count : null,
+        crew: crewOf(type, raw),
+        collection: type === "movie" && raw.belongs_to_collection?.id ? await this.collection(raw.belongs_to_collection.id).catch(() => null) : null
       };
     });
+  }
+
+  /** A movie collection ("The Dark Knight Collection"), parts in release order; null when it has fewer than two parts. */
+  collection(id: number) {
+    return this.cached(`collection:${id}`, async () => {
+      const raw = await this.tmdb.raw(`/collection/${id}?language=en-US`, 3_600_000, 86_400_000);
+      const parts = (raw.parts ?? []).map((p: any) => toItem(p, "movie")).filter((p: PandaItem | null): p is PandaItem => Boolean(p && p.poster))
+        .sort((a: PandaItem, b: PandaItem) => (a.releaseDate ?? "9999").localeCompare(b.releaseDate ?? "9999"));
+      if (parts.length < 2) return null;
+      return { id: raw.id as number, name: String(raw.name ?? ""), overview: raw.overview || null, poster: img(raw.poster_path, "w342"), backdrop: img(raw.backdrop_path, "w1280"), parts };
+    }, 3_600_000);
+  }
+
+  /** Person page: profile, biography and the titles they are known for (acting and crew), most popular first. */
+  person(id: number) {
+    return this.cached(`person:${id}`, async () => {
+      const raw = await this.tmdb.raw(`/person/${id}?${this.q({ language: "en-US", append_to_response: "combined_credits,external_ids" })}`, 600_000, 3_600_000);
+      return personPayload(raw);
+    }, 3_600_000);
   }
 
   season(id: number, season: number) {
