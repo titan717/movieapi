@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { errorResponse } from "../errors.js";
+import { log } from "../logger.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
 import { PandaService, playbackSources, sourceHealth, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
@@ -77,6 +78,25 @@ export function createPandaRoutes(service: PandaService) {
     if ((t !== "all" && !isType(t)) || page === null) return errorResponse(c, "INVALID_REQUEST", "type must be all|movie|tv.", 400, c.get("requestId"));
     const g = guard(c); if (g) return g;
     try { cache(c, 600); return c.json({ success: true, data: await service.trending(t as "all" | MediaType, c.req.query("window") === "week" ? "week" : "day", Math.min(page, 50)) }); } catch (e) { return fail(c, e); }
+  });
+
+  /** "Report an Issue" from the Panda player. Validated, then written to the structured log (Vercel logs). */
+  const ISSUES = new Set(["noplay", "wrong", "sync", "subs"]);
+  app.post("/report", async (c) => {
+    let body: Record<string, unknown>;
+    try {
+      const raw = await c.req.text();
+      if (raw.length > 2000) throw new Error("too large");
+      body = JSON.parse(raw) as Record<string, unknown>;
+    } catch { return errorResponse(c, "INVALID_REQUEST", "Body must be a small JSON object.", 400, c.get("requestId")); }
+    const type = String(body.type ?? ""), tmdbId = Number(body.tmdbId), issue = String(body.issue ?? "");
+    if (!isType(type) || !Number.isInteger(tmdbId) || tmdbId <= 0 || !ISSUES.has(issue)) {
+      return errorResponse(c, "INVALID_REQUEST", "type, tmdbId and a known issue are required.", 400, c.get("requestId"));
+    }
+    const num = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : null);
+    const source = typeof body.source === "string" && /^[a-z]{2,20}$/.test(body.source) ? body.source : null;
+    log("warn", "panda.playback_report", { requestId: c.get("requestId"), type, tmdbId, season: num(body.season), episode: num(body.episode), source, issue, position: num(body.position) });
+    return c.json({ success: true, data: { received: true } }, 202);
   });
 
   app.get("/wall", async (c) => {

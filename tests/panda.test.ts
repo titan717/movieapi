@@ -134,4 +134,14 @@ describe("panda aggregation", () => {
     expect(ids.length).toBeGreaterThanOrEqual(100);
     expect(body.data.posters[0].poster).toContain("/w185/");
   });
+
+  it("accepts valid playback reports and rejects junk", async () => {
+    const app = createApp(base);
+    const ok = await app.request("/api/v1/panda/report", { method: "POST", body: JSON.stringify({ type: "movie", tmdbId: 550, issue: "noplay", source: "cinesrc", position: 12 }), headers: { "Content-Type": "text/plain" } });
+    expect(ok.status).toBe(202);
+    const bad = await app.request("/api/v1/panda/report", { method: "POST", body: JSON.stringify({ type: "movie", tmdbId: -1, issue: "x" }) });
+    expect(bad.status).toBe(400);
+    const junk = await app.request("/api/v1/panda/report", { method: "POST", body: "not json" });
+    expect(junk.status).toBe(400);
+  });
 });
