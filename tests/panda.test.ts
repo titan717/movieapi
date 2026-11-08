@@ -66,7 +66,7 @@ describe("panda aggregation", () => {
     vi.stubGlobal("fetch", vi.fn(async (u: string) => new Response("<html></html>", { status: String(u).includes("vidy") ? 503 : 200 })));
     const res = await createApp(base).request("/api/v1/panda/sources/health");
     const body = await res.json();
-    expect(body.data.sources.map((s: any) => [s.id, s.state])).toEqual([["cinesrc", "healthy"], ["vidy", "down"]]);
+    expect(body.data.sources.map((s: any) => [s.id, s.state])).toEqual([["cinesrc", "healthy"], ["vidy", "down"], ["vidyanime", "down"]]);
   });
 
   it("rejects TV playback without season/episode", async () => {

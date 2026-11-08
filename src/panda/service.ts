@@ -8,6 +8,7 @@
 import type { TmdbClient } from "../providers/tmdb/client.js";
 import { fuzzyVariants, interpretQuery, similarity } from "./smartSearch.js";
 import { MemoryCache } from "../reliability.js";
+import { animeHome, isAnime, resolveAnilist } from "./anilist.js";
 
 export type MediaType = "movie" | "tv";
 
@@ -423,7 +424,7 @@ export class PandaService {
           { id: "drama", title: "Binge-worthy Dramas", load: d("tv", { genre: "18", minVotes: 300 }), link: "/browse/tv?genre=18" },
           { id: "hindi", title: "Hindi Shows", load: d("tv", { lang: "hi", minVotes: 3 }), link: "/browse/tv?lang=hi" },
           { id: "korean", title: "Korean Dramas", load: d("tv", { lang: "ko", minVotes: 50 }), link: "/browse/tv?lang=ko" },
-          { id: "anime", title: "Anime", load: d("tv", { lang: "ja", genre: "16", minVotes: 100 }), link: "/browse/tv?lang=ja&genre=16" },
+          { id: "anime", title: "Anime", load: d("tv", { lang: "ja", genre: "16", minVotes: 100 }), link: "/anime" },
           { id: "crime", title: "Crime Shows", load: d("tv", { genre: "80", minVotes: 200 }), link: "/browse/tv?genre=80" },
           { id: "scifi", title: "Sci-Fi & Fantasy", load: d("tv", { genre: "10765", minVotes: 300 }), link: "/browse/tv?genre=10765" },
           { id: "reality", title: "Reality TV", load: d("tv", { genre: "10764", minVotes: 20 }), link: "/browse/tv?genre=10764" },
@@ -503,6 +504,27 @@ export class PandaService {
   }
 
   /** Artwork for category tiles: one backdrop per genre / language. */
+  /** TMDB title for an AniList card: Japanese animation only, closest year for movies. */
+  async animeLookup(type: MediaType, query: string, year: number | null): Promise<PandaItem | null> {
+    const raw = await this.tmdb.raw(`/search/${type}?${this.q({ query, include_adult: "false", language: "en-US", primary_release_year: type === "movie" && year ? year : undefined })}`, 86_400_000, 604_800_000);
+    const hit = (raw.results ?? []).find((r: any) => r.original_language === "ja" && (r.genre_ids ?? []).includes(16));
+    return hit ? toItem(hit, type) : null;
+  }
+
+  /** The Anime page (AniList rows resolved to TMDB titles). */
+  anime(fetchImpl: typeof fetch = fetch) {
+    return animeHome((t, q, y) => this.animeLookup(t, q, y), fetchImpl);
+  }
+
+  /** AniList id for a TMDB anime title + season, or null when the title is not anime / not matched. */
+  async anilistFor(type: MediaType, id: number, season: number, fetchImpl: typeof fetch = fetch): Promise<number | null> {
+    const t = await this.title(type, id);
+    if (!isAnime(t)) return null;
+    const raw = await this.tmdb.raw(`/${type}/${id}?language=en-US`, 86_400_000, 604_800_000).catch(() => null);
+    const original = raw ? (type === "movie" ? raw.original_title : raw.original_name) : null;
+    return resolveAnilist({ type, tmdbId: id, season, year: t.year, titles: [t.title, original].filter(Boolean) as string[] }, fetchImpl);
+  }
+
   categoryArt() {
     return this.cached("category-art", async () => {
       const genreIds = [10749, 18, 10751, 35, 28, 53, 27, 878, 16, 80, 99, 14];
@@ -522,7 +544,7 @@ export class PandaService {
  * Only the two providers chosen for Panda are registered: CineSrc (cinesrc.st) and Vidy (vidy.st).
  */
 export type SourceAdapter = {
-  id: "cinesrc" | "vidy";
+  id: "cinesrc" | "vidy" | "vidyanime";
   label: string;
   origin: string;
   events: "cinesrc" | "vidy";
@@ -562,17 +584,40 @@ export const SOURCE_ADAPTERS: SourceAdapter[] = [
   }
 ];
 
+/**
+ * Vidy's anime player (v1.2.0), keyed by AniList id: `/anime/{anilistId}/{episode}`. Added to the
+ * source list only for Japanese animation that resolves to an AniList entry (src/panda/anilist.ts).
+ */
+export const ANIME_ADAPTER: SourceAdapter & { buildAnime: (anilistId: number, o: { e: number; start?: number; color: string }) => string } = {
+  id: "vidyanime", label: "Vidy Anime", origin: "https://www.vidy.st", events: "vidy",
+  capabilities: { commands: false, start: true, quality: false, autonext: true, hideControls: false },
+  build: () => { throw new Error("vidyanime needs an AniList id"); },
+  buildAnime: (anilistId, o) => {
+    const u = new URL(`https://www.vidy.st/anime/${anilistId}/${o.e}`);
+    u.searchParams.set("autoplay", "true");
+    u.searchParams.set("color", o.color);
+    if (o.start) u.searchParams.set("progress", String(o.start));
+    return u.toString();
+  },
+  probe: "https://www.vidy.st/anime/21/1"
+};
+
 /** Playback sources for every registered adapter. Pure function; no network. */
-export function playbackSources(type: MediaType, id: number, opts: { season?: number; episode?: number; start?: number; color?: string; quality?: string } = {}) {
+export function playbackSources(type: MediaType, id: number, opts: { season?: number; episode?: number; start?: number; color?: string; quality?: string; anilistId?: number | null } = {}) {
   const color = (opts.color ?? "1f80e0").replace(/^#/, "");
   const start = opts.start && opts.start > 5 ? Math.floor(opts.start) : undefined;
   const s = opts.season ?? 1, e = opts.episode ?? 1;
   const quality = opts.quality && /^(2160|1080|720|480)$/.test(opts.quality) ? opts.quality : undefined;
-  return SOURCE_ADAPTERS.map((a) => ({
+  const list = SOURCE_ADAPTERS.map((a) => ({
     id: a.id, provider: a.id, label: a.label, origin: a.origin, events: a.events,
     supportsStart: a.capabilities.start, capabilities: a.capabilities,
     url: a.build(type, id, { s, e, start, color, quality })
   }));
+  if (opts.anilistId) {
+    const a = ANIME_ADAPTER;
+    list.push({ id: a.id, provider: "vidy", label: a.label, origin: a.origin, events: a.events, supportsStart: true, capabilities: a.capabilities, url: a.buildAnime(opts.anilistId, { e: type === "movie" ? 1 : e, start, color }) });
+  }
+  return list;
 }
 
 export type SourceHealth = { id: SourceAdapter["id"]; label: string; state: "healthy" | "degraded" | "down"; status: number | null; latencyMs: number | null; checkedAt: string };
@@ -582,7 +627,7 @@ let healthCache: { at: number; value: SourceHealth[] } | null = null;
 /** Probes every adapter (GET with a 6 s timeout). Cached for 5 minutes per instance. */
 export async function sourceHealth(fetchImpl: typeof fetch = fetch, now = Date.now()): Promise<SourceHealth[]> {
   if (healthCache && now - healthCache.at < 300_000) return healthCache.value;
-  const value = await Promise.all(SOURCE_ADAPTERS.map(async (a): Promise<SourceHealth> => {
+  const value = await Promise.all([...SOURCE_ADAPTERS, ANIME_ADAPTER].map(async (a): Promise<SourceHealth> => {
     const t0 = Date.now();
     try {
       const res = await fetchImpl(a.probe, { redirect: "follow", signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (PandaHealth)" } });

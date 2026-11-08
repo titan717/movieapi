@@ -4,6 +4,7 @@ import { errorResponse } from "../errors.js";
 import { log } from "../logger.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
 import { mirrorRelease, isReleaseTag } from "./releases.js";
+import { buckets, rank, recordOutcome, kvConfigured } from "./ranking.js";
 import { PandaService, playbackSources, sourceHealth, skipSegments, isImdbId, parseCalendarIds, CALENDAR_MAX, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
 type AppEnv = { Variables: { requestId: string } };
@@ -88,8 +89,11 @@ export function createPandaRoutes(service: PandaService) {
     try { cache(c, 600); return c.json({ success: true, data: await service.trending(t as "all" | MediaType, c.req.query("window") === "week" ? "week" : "day", Math.min(page, 50)) }); } catch (e) { return fail(c, e); }
   });
 
-  /** "Report an Issue" from the Panda player, plus automatic "popups" signals from the ad shield. Validated, then written to the structured log (Vercel logs). */
-  const ISSUES = new Set(["noplay", "wrong", "sync", "subs", "popups"]);
+  /**
+   * "Report an Issue" from the Panda player, automatic "popups" signals from the ad shield, and
+   * `ok` when a source started playback. Validated, logged, and counted for /sources/ranking.
+   */
+  const ISSUES = new Set(["noplay", "wrong", "sync", "subs", "popups", "ok"]);
   app.post("/report", async (c) => {
     let body: Record<string, unknown>;
     try {
@@ -103,8 +107,9 @@ export function createPandaRoutes(service: PandaService) {
     }
     const num = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : null);
     const source = typeof body.source === "string" && /^[a-z]{2,20}$/.test(body.source) ? body.source : null;
-    log("warn", "panda.playback_report", { requestId: c.get("requestId"), type, tmdbId, season: num(body.season), episode: num(body.episode), source, issue, position: num(body.position) });
-    return c.json({ success: true, data: { received: true } }, 202);
+    const counted = source ? recordOutcome(source, issue) : false;
+    if (issue !== "ok") log("warn", "panda.playback_report", { requestId: c.get("requestId"), type, tmdbId, season: num(body.season), episode: num(body.episode), source, issue, position: num(body.position), counted });
+    return c.json({ success: true, data: { received: true, counted } }, 202);
   });
 
   app.get("/wall", async (c) => {
@@ -129,15 +134,23 @@ export function createPandaRoutes(service: PandaService) {
     try { cache(c, 86400); return c.json({ success: true, data: await service.categoryArt() }); } catch (e) { return fail(c, e); }
   });
 
-  app.get("/play/:type/:id", (c) => {
+  app.get("/play/:type/:id", async (c) => {
     const type = c.req.param("type"); const id = int(c.req.param("id"));
     const season = int(c.req.query("s")); const episode = int(c.req.query("e")); const start = Number(c.req.query("t") ?? 0);
     if (!isType(type) || !id || season === null || episode === null) return errorResponse(c, "INVALID_MEDIA_ID", "Invalid playback identifiers.", 400, c.get("requestId"));
     if (type === "tv" && (!season || !episode)) return errorResponse(c, "INVALID_EPISODE_ID", "TV playback requires s and e.", 400, c.get("requestId"));
     const color = c.req.query("color")?.replace(/^#/, "");
     const quality = c.req.query("quality");
+    // anime=1: the client saw Japanese animation; resolve the AniList id for Vidy's anime player (≤ 4 s)
+    let anilistId: number | null = null;
+    if (c.req.query("anime") === "1" && service.enabled) {
+      anilistId = await Promise.race([
+        service.anilistFor(type, id, season ?? 1).catch((e) => { log("warn", "panda.anilist_failed", { type, id, error: String(e) }); return null; }),
+        new Promise<null>((r) => setTimeout(() => r(null), 4000))
+      ]);
+    }
     cache(c, 3600);
-    return c.json({ success: true, data: { type, tmdbId: id, season: season ?? null, episode: episode ?? null, sources: playbackSources(type, id, { season, episode, start: Number.isFinite(start) ? start : 0, quality, color: color && /^[0-9a-fA-F]{6}$/.test(color) ? color : undefined }) } });
+    return c.json({ success: true, data: { type, tmdbId: id, season: season ?? null, episode: episode ?? null, anilistId, sources: playbackSources(type, id, { season, episode, start: Number.isFinite(start) ? start : 0, quality, anilistId, color: color && /^[0-9a-fA-F]{6}$/.test(color) ? color : undefined }) } });
   });
 
   app.get("/segments/:imdb", async (c) => {
@@ -176,6 +189,19 @@ export function createPandaRoutes(service: PandaService) {
       cache(c, 300);
       return c.json({ success: true, data });
     } catch (e) { log("warn", "panda.release_mirror_failed", { error: String(e) }); return errorResponse(c, "PROVIDER_UNAVAILABLE", "Release information is unavailable right now.", 503, c.get("requestId")); }
+  });
+
+  /** Community ranking: Wilson lower bound over time-decayed play outcomes + live health prior. */
+  app.get("/sources/ranking", async (c) => {
+    const [health, b] = await Promise.all([sourceHealth().catch(() => []), buckets()]);
+    c.header("cache-control", "public, max-age=60, stale-while-revalidate=600");
+    return c.json({ success: true, data: { sources: rank(b, health), halfLifeHours: 72, shared: kvConfigured(), updatedAt: new Date().toISOString() } });
+  });
+
+  app.get("/anime", async (c) => {
+    const g = guard(c); if (g) return g;
+    try { cache(c, 1800); return c.json({ success: true, data: await service.anime() }); }
+    catch (e) { log("warn", "panda.anime_failed", { error: String(e) }); return errorResponse(c, "PROVIDER_UNAVAILABLE", "Anime is unavailable right now.", 503, c.get("requestId")); }
   });
 
   app.get("/sources/health", async (c) => {
