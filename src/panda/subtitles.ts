@@ -1,15 +1,19 @@
 /**
  * External subtitles (v1.2.1): GET /panda/subtitles/:imdb and GET /panda/subtitles/file.
  *
- * Search uses the public OpenSubtitles.org REST index (no key) by IMDb id, optional season/episode and
- * language. The file route downloads the gzipped subtitle, decodes its declared encoding, converts SRT
- * to WebVTT and removes advertising cues (lines with web addresses or "watch online" spam) so the
- * caption layer never shows an ad. Only dl.opensubtitles.org download paths are accepted (no SSRF).
+ * Search reads the OpenSubtitles catalogue through Stremio's public OpenSubtitles v3 add-on (no key,
+ * one request per title or episode, files already re-encoded to UTF-8) and falls back to the
+ * OpenSubtitles.org REST index, which Cloudflare often refuses from data-centre addresses. The file
+ * route downloads the subtitle, decodes it, converts SRT to WebVTT and removes advertising cues (lines
+ * with web addresses or "watch online" spam) so the caption layer never shows an ad. Only the two
+ * download hosts are accepted (no SSRF).
  */
 import { gunzipSync } from "node:zlib";
 
 const SEARCH = "https://rest.opensubtitles.org/search";
+const V3 = "https://opensubtitles-v3.strem.io/subtitles";
 const DL_HOST = "https://dl.opensubtitles.org/";
+const STREMIO_HOST = /^https:\/\/subs\d{0,2}\.strem\.io\/[a-z]{2}\/download\/[A-Za-z0-9/_.-]+$/;
 const UA = "TemporaryUserAgent";
 const TTL = 6 * 3_600_000;
 
@@ -42,67 +46,101 @@ export const parseLangs = (v: string | undefined) => {
   return list.length ? [...new Set(list)].slice(0, 3) : null;
 };
 
-/** dl.opensubtitles.org path ("en/download/src-api/vrf-…/file/123.gz") ⇄ URL-safe token. */
-export const encodeFile = (url: string) => {
-  if (!url.startsWith(DL_HOST)) return null;
-  const path = url.slice(DL_HOST.length);
-  return /^[a-z]{2}\/download\/[A-Za-z0-9/_.-]+$/.test(path) ? Buffer.from(path).toString("base64url") : null;
-};
+/** Download URL (dl.opensubtitles.org or subsN.strem.io) ⇄ URL-safe token. */
+const allowed = (url: string) => !url.includes("..") && (STREMIO_HOST.test(url) || (url.startsWith(DL_HOST) && /^[a-z]{2}\/download\/[A-Za-z0-9/_.-]+$/.test(url.slice(DL_HOST.length))));
+export const encodeFile = (url: string) => (allowed(url) ? Buffer.from(url.replace(/^https:\/\//, "")).toString("base64url") : null);
 export const decodeFile = (token: string) => {
   if (!/^[A-Za-z0-9_-]{8,400}$/.test(token)) return null;
-  const path = Buffer.from(token, "base64url").toString("utf8");
-  return /^[a-z]{2}\/download\/[A-Za-z0-9/_.-]+$/.test(path) && !path.includes("..") ? DL_HOST + path : null;
+  const url = `https://${Buffer.from(token, "base64url").toString("utf8")}`;
+  return allowed(url) ? url : null;
 };
 
-const searchCache = new Map<string, { at: number; value: SubtitleTrack[] }>();
+/** OpenSubtitles 639-2 codes (including the add-on's regional ones) → ISO 639-1. */
+const FROM_OS: Record<string, string> = Object.fromEntries([...Object.entries(LANGS).map(([k, v]) => [v, k]), ["pob", "pt"], ["pom", "pt"], ["spn", "es"], ["spl", "es"], ["zht", "zh"], ["zhe", "zh"], ["gre", "el"], ["heb", "he"], ["fas", "fa"], ["msa", "ms"]]);
 
-/** Best 4 single-file subtitles per language, most downloaded first, hearing-impaired versions after regular ones. */
-export function pickTracks(raw: any[], lang: string): SubtitleTrack[] {
+interface Row { id: string; url: string; lang: string; hi: boolean; downloads: number; release: string; enc: string; order: number }
+
+const searchCache = new Map<string, { at: number; value: Row[] }>();
+
+/** Best 4 subtitles per language: regular before hearing-impaired, then most downloaded / listed first. */
+export function toTracks(rows: Row[], lang: string): SubtitleTrack[] {
   const out: SubtitleTrack[] = [];
-  const rows = (Array.isArray(raw) ? raw : [])
-    .filter((r) => r && (r.SubFormat === "srt" || r.SubFormat === "vtt") && String(r.SubSumCD ?? "1") === "1" && Number(r.SubBad ?? 0) === 0 && typeof r.SubDownloadLink === "string")
-    .sort((a, b) => (Number(a.SubHearingImpaired) - Number(b.SubHearingImpaired)) || Number(b.SubDownloadsCnt ?? 0) - Number(a.SubDownloadsCnt ?? 0));
-  for (const r of rows) {
-    const token = encodeFile(r.SubDownloadLink);
-    if (!token) continue;
-    const enc = String(r.SubEncoding ?? "utf-8").toLowerCase();
-    const hi = r.SubHearingImpaired === "1";
-    const n = out.filter((t) => t.hearingImpaired === hi).length + 1;
+  const list = rows.filter((r) => r.lang === lang).sort((a, b) => Number(a.hi) - Number(b.hi) || b.downloads - a.downloads || a.order - b.order);
+  const seen = new Set<string>();
+  for (const r of list) {
+    const token = encodeFile(r.url);
+    if (!token || seen.has(r.url)) continue;
+    seen.add(r.url);
+    const n = out.filter((t) => t.hearingImpaired === r.hi).length + 1;
     out.push({
-      id: String(r.IDSubtitleFile),
-      language: lang,
-      label: `${LANG_NAMES[lang]}${hi ? " (SDH)" : ""}${n > 1 ? ` ${n}` : ""}`,
-      hearingImpaired: hi,
-      downloads: Number(r.SubDownloadsCnt ?? 0) || 0,
-      release: String(r.MovieReleaseName || r.SubFileName || "").trim().slice(0, 80),
-      file: `/api/v1/panda/subtitles/file?f=${token}&enc=${encodeURIComponent(ENCODINGS.has(enc) ? enc : "utf-8")}`
+      id: r.id, language: lang, label: `${LANG_NAMES[lang]}${r.hi ? " (SDH)" : ""}${n > 1 ? ` ${n}` : ""}`, hearingImpaired: r.hi, downloads: r.downloads, release: r.release,
+      file: `/api/v1/panda/subtitles/file?f=${token}&enc=${encodeURIComponent(ENCODINGS.has(r.enc) ? r.enc : "utf-8")}`
     });
     if (out.length >= 4) break;
   }
   return out;
 }
 
-export async function searchSubtitles(imdb: string, season: number | null, episode: number | null, langs: string[], fetchImpl: typeof fetch = fetch, now = Date.now()) {
-  const all = await Promise.all(langs.map(async (lang) => {
-    const key = `${imdb}:${season ?? ""}:${episode ?? ""}:${lang}`;
-    const hit = searchCache.get(key);
-    if (hit && now - hit.at < TTL) return hit.value;
-    const parts = season && episode ? [`episode-${episode}`, `imdbid-${imdb.slice(2)}`, `season-${season}`] : [`imdbid-${imdb.slice(2)}`];
-    const url = `${SEARCH}/${[...parts, `sublanguageid-${LANGS[lang]}`].join("/")}`;
-    let value: SubtitleTrack[] = [];
-    try {
-      const res = await fetchImpl(url, { signal: AbortSignal.timeout(6000), headers: { "user-agent": UA, "x-user-agent": UA, accept: "application/json" } });
-      if (res.ok && (res.headers.get("content-type") ?? "").includes("json")) value = pickTracks(await res.json(), lang);
-      else { await res.body?.cancel().catch(() => undefined); throw new Error(`opensubtitles ${res.status}`); }
-    } catch (e) {
-      if (hit) return hit.value;
-      throw e;
-    }
-    searchCache.set(key, { at: now, value });
-    if (searchCache.size > 3000) searchCache.delete(searchCache.keys().next().value as string);
-    return value;
+const isHi = (name: string) => /(^|[^a-z])(hi|sdh|cc)([^a-z]|$)/i.test(name.replace(/\.(srt|vtt)$/i, ""));
+
+/** Stremio OpenSubtitles v3 add-on rows (already UTF-8). */
+export function fromV3(raw: any): Row[] {
+  return (Array.isArray(raw?.subtitles) ? raw.subtitles : []).map((r: any, i: number): Row | null => {
+    const lang = FROM_OS[String(r?.lang ?? "")];
+    if (!lang || typeof r?.url !== "string") return null;
+    const name = String(r.subtitleFileName ?? "");
+    return { id: `v3-${r.id ?? i}`, url: r.url, lang, hi: isHi(name), downloads: 0, release: String(r.movieReleaseName || name).trim().slice(0, 80), enc: "utf-8", order: i };
+  }).filter((r: Row | null): r is Row => r !== null);
+}
+
+/** OpenSubtitles.org REST rows. */
+export function fromRest(raw: any): Row[] {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((r) => r && (r.SubFormat === "srt" || r.SubFormat === "vtt") && String(r.SubSumCD ?? "1") === "1" && Number(r.SubBad ?? 0) === 0 && typeof r.SubDownloadLink === "string")
+    .map((r, i): Row | null => {
+      const lang = FROM_OS[String(r.SubLanguageID ?? "")] ?? (typeof r.ISO639 === "string" && r.ISO639 in LANGS ? r.ISO639 : null);
+      if (!lang) return null;
+      return { id: String(r.IDSubtitleFile), url: r.SubDownloadLink, lang, hi: r.SubHearingImpaired === "1", downloads: Number(r.SubDownloadsCnt ?? 0) || 0, release: String(r.MovieReleaseName || r.SubFileName || "").trim().slice(0, 80), enc: String(r.SubEncoding ?? "utf-8").toLowerCase(), order: i };
+    }).filter((r): r is Row => r !== null);
+}
+
+/** REST rows of one language as tracks. */
+export const pickTracks = (raw: any[], lang: string) => toTracks(fromRest(raw), lang);
+
+async function getJson(url: string, fetchImpl: typeof fetch, timeout: number) {
+  const res = await fetchImpl(url, { signal: AbortSignal.timeout(timeout), headers: { "user-agent": UA, "x-user-agent": UA, accept: "application/json" } });
+  if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) { await res.body?.cancel().catch(() => undefined); throw new Error(`${new URL(url).hostname} ${res.status}`); }
+  return res.json();
+}
+
+/** Rows for a title or episode: the v3 add-on first (all languages in one call), then the REST index. */
+async function rowsFor(imdb: string, season: number | null, episode: number | null, langs: string[], fetchImpl: typeof fetch): Promise<Row[]> {
+  const ep = season && episode;
+  let v3: Row[] = [];
+  let v3Error: unknown = null;
+  try { v3 = fromV3(await getJson(`${V3}/${ep ? "series" : "movie"}/${ep ? `${imdb}:${season}:${episode}` : imdb}.json`, fetchImpl, 6000)); } catch (e) { v3Error = e; }
+  const missing = langs.filter((l) => !v3.some((r) => r.lang === l));
+  if (!missing.length) return v3;
+  const rest = await Promise.all(missing.map(async (lang) => {
+    const parts = ep ? [`episode-${episode}`, `imdbid-${imdb.slice(2)}`, `season-${season}`] : [`imdbid-${imdb.slice(2)}`];
+    try { return fromRest(await getJson(`${SEARCH}/${[...parts, `sublanguageid-${LANGS[lang]}`].join("/")}`, fetchImpl, 5000)); } catch { return null; }
   }));
-  return all.flat();
+  if (v3Error && rest.every((r) => r === null)) throw v3Error;
+  return [...v3, ...rest.flatMap((r) => r ?? [])];
+}
+
+export async function searchSubtitles(imdb: string, season: number | null, episode: number | null, langs: string[], fetchImpl: typeof fetch = fetch, now = Date.now()): Promise<SubtitleTrack[]> {
+  const key = `${imdb}:${season ?? ""}:${episode ?? ""}:${[...langs].sort().join(",")}`;
+  const hit = searchCache.get(key);
+  let rows: Row[];
+  if (hit && now - hit.at < TTL) rows = hit.value;
+  else {
+    try { rows = await rowsFor(imdb, season, episode, langs, fetchImpl); }
+    catch (e) { if (hit) rows = hit.value; else throw e; }
+    searchCache.set(key, { at: now, value: rows });
+    if (searchCache.size > 3000) searchCache.delete(searchCache.keys().next().value as string);
+  }
+  return langs.flatMap((l) => toTracks(rows, l));
 }
 
 const AD = /(https?:\/\/|www\.|\.(com|org|net|link|xyz|io|tv|me|cc)\b|opensubtitles|\b(osdb|subscene|yts|yify)\b|advertise|watch (online|free)|movies and series for free|subtitles? (by|downloaded)|support us and become vip|rate this subtitle)/i;
