@@ -19,8 +19,20 @@ const HOUR = 3_600_000;
 
 /** Issues that mean "this source failed"; `subs` counts half (the source's own subtitle menu). */
 export const FAILURE_WEIGHT: Record<string, number> = { noplay: 1, wrong: 1, sync: 1, popups: 1, subs: 0.5 };
-export const SOURCE_IDS = ["cinesrc", "vidy", "vidyanime"] as const;
+export const SOURCE_IDS = ["cinesrc", "vidy", "vidyanime", "vidlink"] as const;
 export type RankedSourceId = (typeof SOURCE_IDS)[number];
+
+/**
+ * Ad tiers (Panda v1.2.4, Panda.fun docs/SOURCES.md): measured popups, top-level navigations and ad
+ * requests per source. Ranking sorts by tier first; community scores reorder only inside a tier.
+ * Updated by the weekly "Source ad score" workflow in Panda.fun.
+ */
+export const SOURCE_TIERS: Record<RankedSourceId, { tier: 1 | 2 | 3 | 4; popups: number; navigations: number; adRequests: number; sandbox: boolean; measuredAt: string }> = {
+  cinesrc: { tier: 1, popups: 0, navigations: 0, adRequests: 3, sandbox: true, measuredAt: "2026-11-09" },
+  vidy: { tier: 2, popups: 0, navigations: 0, adRequests: 1, sandbox: false, measuredAt: "2026-11-09" },
+  vidyanime: { tier: 2, popups: 0, navigations: 0, adRequests: 1, sandbox: false, measuredAt: "2026-11-09" },
+  vidlink: { tier: 3, popups: 1, navigations: 0, adRequests: 21, sandbox: false, measuredAt: "2026-11-09" }
+};
 
 type Bucket = { ok: number; bad: number };
 /** source → hour index → counts */
@@ -59,6 +71,9 @@ export type RankEntry = {
   reliability: number | null;
   plays: number; reports: number; reports24h: number;
   state: Health["state"] | null;
+  /** Ad tier (1 cleanest … 4 ad-heavy) and the measurement behind it. */
+  tier: 1 | 2 | 3 | 4;
+  ads: { popups: number; navigations: number; adRequests: number; sandbox: boolean; measuredAt: string };
 };
 
 const PRIOR: Record<Health["state"], Bucket> = { healthy: { ok: 2, bad: 0 }, degraded: { ok: 1, bad: 1 }, down: { ok: 0, bad: 3 } };
@@ -83,11 +98,14 @@ export function rank(buckets: Map<string, Map<number, Bucket>>, health: Health[]
       id, rank: 0,
       score: Math.round(wilson(ok + prior.ok, n) * 1000) / 1000,
       reliability: observed >= 1 ? Math.round((ok / observed) * 100) / 100 : null,
-      plays, reports, reports24h, state
+      plays, reports, reports24h, state,
+      tier: SOURCE_TIERS[id].tier,
+      ads: (({ tier: _t, ...ads }) => ads)(SOURCE_TIERS[id])
     };
   });
-  // ties keep the registry order (CineSrc first, the blueprint's default)
-  out.sort((a, b) => b.score - a.score || SOURCE_IDS.indexOf(a.id) - SOURCE_IDS.indexOf(b.id));
+  // a source that is down right now goes last; otherwise a cleaner ad tier always wins; the community score reorders only inside a tier, and ties keep
+  // the registry order (CineSrc first, the blueprint's default)
+  out.sort((a, b) => Number(a.state === "down") - Number(b.state === "down") || a.tier - b.tier || b.score - a.score || SOURCE_IDS.indexOf(a.id) - SOURCE_IDS.indexOf(b.id));
   out.forEach((x, i) => { x.rank = i + 1; });
   return out;
 }

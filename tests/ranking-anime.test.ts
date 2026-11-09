@@ -31,15 +31,17 @@ describe("Wilson ranking", () => {
     expect(decay(144)).toBeCloseTo(0.25, 6);
   });
 
-  it("ranks a reported source below a healthy one and lets old reports fade", () => {
+  it("ranks a reported source below a healthy one inside its tier and lets old reports fade", () => {
     const store = new Map();
     const now = Date.UTC(2026, 10, 9, 12);
+    for (let i = 0; i < 20; i++) recordOutcome("vidy", "noplay", now, store);
+    for (let i = 0; i < 20; i++) recordOutcome("vidyanime", "ok", now, store);
     for (let i = 0; i < 20; i++) recordOutcome("cinesrc", "noplay", now, store);
-    for (let i = 0; i < 20; i++) recordOutcome("vidy", "ok", now, store);
     const r = rank(store, [{ id: "cinesrc", state: "healthy" }, { id: "vidy", state: "healthy" }], now);
-    expect(r[0]!.id).toBe("vidy");
+    // tier 2: the reported Vidy drops below Vidy Anime
+    expect(r.findIndex((x) => x.id === "vidyanime")).toBeLessThan(r.findIndex((x) => x.id === "vidy"));
+    expect(r.find((x) => x.id === "vidyanime")!.reliability).toBe(1);
     expect(r.find((x) => x.id === "cinesrc")!.reports24h).toBe(20);
-    expect(r.find((x) => x.id === "vidy")!.reliability).toBe(1);
     // two weeks of fresh successes outweigh the old failures
     const later = now + 10 * 86_400_000;
     for (let i = 0; i < 20; i++) recordOutcome("cinesrc", "ok", later, store);
@@ -51,7 +53,19 @@ describe("Wilson ranking", () => {
     const store = new Map();
     expect(recordOutcome("evil", "ok", Date.now(), store)).toBe(false);
     expect(recordOutcome("cinesrc", "other", Date.now(), store)).toBe(false);
-    expect(rank(store, []).map((x) => x.id)).toEqual(["cinesrc", "vidy", "vidyanime"]);
+    expect(rank(store, []).map((x) => x.id)).toEqual(["cinesrc", "vidy", "vidyanime", "vidlink"]);
+  });
+
+  it("never lifts a source above a cleaner ad tier, however well it is rated", () => {
+    const store = new Map();
+    const now = Date.now();
+    for (let i = 0; i < 50; i++) recordOutcome("vidlink", "ok", now, store);
+    for (let i = 0; i < 5; i++) recordOutcome("cinesrc", "noplay", now, store);
+    const r = rank(store, [], now);
+    expect(r.map((x) => x.id)).toEqual(["cinesrc", "vidy", "vidyanime", "vidlink"]);
+    expect(r.find((x) => x.id === "vidlink")!.tier).toBe(3);
+    expect(r.find((x) => x.id === "vidlink")!.ads.popups).toBe(1);
+    expect(r[0]!.tier).toBe(1);
   });
 
   it("a source that is down right now drops before anyone reports it", () => {
@@ -69,7 +83,9 @@ describe("Wilson ranking", () => {
     await app.request("/api/v1/panda/report", { method: "POST", body: JSON.stringify({ type: "movie", tmdbId: 550, source: "vidy", issue: "ok", position: 0 }) });
     const body = await (await app.request("/api/v1/panda/sources/ranking")).json();
     expect(body.data.halfLifeHours).toBe(72);
-    expect(body.data.sources[0].id).toBe("vidy");
+    // tier 1 stays first despite the reports; the tier and ad measurement travel with each entry
+    expect(body.data.sources[0].id).toBe("cinesrc");
+    expect(body.data.sources[0].tier).toBe(1);
     expect(body.data.sources.find((s: any) => s.id === "cinesrc").reports).toBe(5);
   });
 });
@@ -113,7 +129,7 @@ describe("AniList bridge", () => {
     }));
     const body = await (await createApp(base).request("/api/v1/panda/play/tv/95479?s=2&e=1&anime=1")).json();
     expect(body.data.anilistId).toBe(145064);
-    expect(body.data.sources.map((s: any) => s.id)).toEqual(["cinesrc", "vidy", "vidyanime"]);
+    expect(body.data.sources.map((s: any) => s.id)).toEqual(["cinesrc", "vidy", "vidlink", "vidyanime"]);
   });
 
   it("builds the Anime page from AniList rows resolved to TMDB", async () => {

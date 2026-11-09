@@ -43,7 +43,12 @@ describe("panda aggregation", () => {
   it("returns both providers for TV playback using TMDB ids directly", async () => {
     const res = await createApp(base).request("/api/v1/panda/play/tv/1399?s=2&e=3&t=120");
     const body = await res.json();
-    expect(body.data.sources.map((s: any) => s.id)).toEqual(["cinesrc", "vidy"]);
+    expect(body.data.sources.map((s: any) => s.id)).toEqual(["cinesrc", "vidy", "vidlink"]);
+    const vl = body.data.sources.find((s: any) => s.id === "vidlink");
+    expect(vl.tier).toBe(3);
+    expect(vl.url).toMatch(/^https:\/\/vidlink\.pro\/tv\/\d+\/\d+\/\d+\?/);
+    expect(vl.url).toContain("title=false");
+    expect(vl.url).toContain("nextbutton=false");
     expect(body.data.sources[0].url).toContain("cinesrc.st/embed/tv/1399?s=2&e=3");
     expect(body.data.sources[0].url).toContain("t=120");
     expect(body.data.sources[0].url).toContain("autonext=false");
@@ -66,7 +71,7 @@ describe("panda aggregation", () => {
     vi.stubGlobal("fetch", vi.fn(async (u: string) => new Response("<html></html>", { status: String(u).includes("vidy") ? 503 : 200 })));
     const res = await createApp(base).request("/api/v1/panda/sources/health");
     const body = await res.json();
-    expect(body.data.sources.map((s: any) => [s.id, s.state])).toEqual([["cinesrc", "healthy"], ["vidy", "down"], ["vidyanime", "down"]]);
+    expect(body.data.sources.map((s: any) => [s.id, s.state])).toEqual([["cinesrc", "healthy"], ["vidy", "down"], ["vidlink", "healthy"], ["vidyanime", "down"]]);
   });
 
   it("rejects TV playback without season/episode", async () => {

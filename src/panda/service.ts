@@ -541,11 +541,15 @@ export class PandaService {
 /**
  * Source registry: every adapter builds its embed URL from TMDB ids (no network), declares its
  * capabilities and a probe URL used by the background health check. Order = default ranking.
- * Only the two providers chosen for Panda are registered: CineSrc (cinesrc.st) and Vidy (vidy.st).
+ * Providers: CineSrc (cinesrc.st, Tier 1), Vidy (vidy.st, Tier 2) and VidLink (vidlink.pro, Tier 3,
+ * Panda v1.2.4). Tiers come from Panda's instrumented ad measurements (Panda.fun docs/SOURCES.md);
+ * ranking never lifts a source above a cleaner tier.
  */
 export type SourceAdapter = {
-  id: "cinesrc" | "vidy" | "vidyanime";
+  id: "cinesrc" | "vidy" | "vidyanime" | "vidlink";
   label: string;
+  /** 1 = controls off + commands, no ads · 2 = themeable, no popups · 3 = measured ads/popups · 4 = ad-heavy. */
+  tier: 1 | 2 | 3 | 4;
   origin: string;
   events: "cinesrc" | "vidy";
   capabilities: { commands: boolean; start: boolean; quality: boolean; autonext: boolean; hideControls: boolean };
@@ -555,7 +559,7 @@ export type SourceAdapter = {
 
 export const SOURCE_ADAPTERS: SourceAdapter[] = [
   {
-    id: "cinesrc", label: "CineSrc", origin: "https://cinesrc.st", events: "cinesrc",
+    id: "cinesrc", label: "CineSrc", origin: "https://cinesrc.st", events: "cinesrc", tier: 1,
     capabilities: { commands: true, start: true, quality: true, autonext: true, hideControls: true },
     build: (type, id, o) => {
       const u = new URL(type === "movie" ? `https://cinesrc.st/embed/movie/${id}` : `https://cinesrc.st/embed/tv/${id}`);
@@ -571,7 +575,7 @@ export const SOURCE_ADAPTERS: SourceAdapter[] = [
     probe: "https://cinesrc.st/embed/movie/550"
   },
   {
-    id: "vidy", label: "Vidy", origin: "https://www.vidy.st", events: "vidy",
+    id: "vidy", label: "Vidy", origin: "https://www.vidy.st", events: "vidy", tier: 2,
     capabilities: { commands: false, start: true, quality: false, autonext: true, hideControls: false },
     build: (type, id, o) => {
       const u = new URL(type === "movie" ? `https://www.vidy.st/movie/${id}` : `https://www.vidy.st/tv/${id}/${o.s}/${o.e}`);
@@ -581,15 +585,43 @@ export const SOURCE_ADAPTERS: SourceAdapter[] = [
       return u.toString();
     },
     probe: "https://www.vidy.st/movie/550"
+  },
+  {
+    // https://vidlink.pro docs: /movie/{tmdb}, /tv/{tmdb}/{s}/{e}; themed with Panda's colours, our own
+    // title and next-episode UI (title=false, nextbutton=false), resume through startAt. Outbound
+    // PLAYER_EVENT / MEDIA_DATA only, no inbound commands. Refuses to play in an iframe sandbox and
+    // opened a popup on the first click in Panda's measurement, so it ranks below CineSrc and Vidy.
+    id: "vidlink", label: "VidLink", origin: "https://vidlink.pro", events: "vidy", tier: 3,
+    capabilities: { commands: false, start: true, quality: false, autonext: false, hideControls: false },
+    build: (type, id, o) => {
+      const u = new URL(type === "movie" ? `https://vidlink.pro/movie/${id}` : `https://vidlink.pro/tv/${id}/${o.s}/${o.e}`);
+      vidlinkTheme(u, o.color);
+      if (o.start) u.searchParams.set("startAt", String(o.start));
+      return u.toString();
+    },
+    probe: "https://vidlink.pro/movie/550"
   }
 ];
+
+/** Panda design tokens for VidLink's themeable player (progress = accent, track = TV surface, white icons). */
+export function vidlinkTheme(u: URL, color: string) {
+  u.searchParams.set("primaryColor", color);
+  u.searchParams.set("secondaryColor", "2a3550");
+  u.searchParams.set("iconColor", "ffffff");
+  u.searchParams.set("icons", "default");
+  u.searchParams.set("player", "default");
+  u.searchParams.set("title", "false");
+  u.searchParams.set("poster", "true");
+  u.searchParams.set("autoplay", "true");
+  u.searchParams.set("nextbutton", "false");
+}
 
 /**
  * Vidy's anime player (v1.2.0), keyed by AniList id: `/anime/{anilistId}/{episode}`. Added to the
  * source list only for Japanese animation that resolves to an AniList entry (src/panda/anilist.ts).
  */
 export const ANIME_ADAPTER: SourceAdapter & { buildAnime: (anilistId: number, o: { e: number; start?: number; color: string }) => string } = {
-  id: "vidyanime", label: "Vidy Anime", origin: "https://www.vidy.st", events: "vidy",
+  id: "vidyanime", label: "Vidy Anime", origin: "https://www.vidy.st", events: "vidy", tier: 2,
   capabilities: { commands: false, start: true, quality: false, autonext: true, hideControls: false },
   build: () => { throw new Error("vidyanime needs an AniList id"); },
   buildAnime: (anilistId, o) => {
@@ -611,11 +643,12 @@ export function playbackSources(type: MediaType, id: number, opts: { season?: nu
   const list = SOURCE_ADAPTERS.map((a) => ({
     id: a.id, provider: a.id, label: a.label, origin: a.origin, events: a.events,
     supportsStart: a.capabilities.start, capabilities: a.capabilities,
+    tier: a.tier,
     url: a.build(type, id, { s, e, start, color, quality })
   }));
   if (opts.anilistId) {
     const a = ANIME_ADAPTER;
-    list.push({ id: a.id, provider: "vidy", label: a.label, origin: a.origin, events: a.events, supportsStart: true, capabilities: a.capabilities, url: a.buildAnime(opts.anilistId, { e: type === "movie" ? 1 : e, start, color }) });
+    list.push({ id: a.id, provider: "vidy", label: a.label, origin: a.origin, events: a.events, supportsStart: true, capabilities: a.capabilities, tier: a.tier, url: a.buildAnime(opts.anilistId, { e: type === "movie" ? 1 : e, start, color }) });
   }
   return list;
 }
