@@ -6,6 +6,7 @@ import { TmdbProviderError } from "../providers/tmdb/client.js";
 import { mirrorRelease, isReleaseTag } from "./releases.js";
 import { searchSubtitles, subtitleFile, parseLangs } from "./subtitles.js";
 import { buckets, rank, recordOutcome, kvConfigured } from "./ranking.js";
+import { SYNC_ID, SYNC_MAX_BYTES, checkClient, clearMisses, readRecord, recordMiss, revokeRecord, syncStore, validBlob, writeRecord } from "./sync.js";
 import { PandaService, playbackSources, sourceHealth, skipSegments, isImdbId, parseCalendarIds, CALENDAR_MAX, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
 type AppEnv = { Variables: { requestId: string } };
@@ -111,6 +112,69 @@ export function createPandaRoutes(service: PandaService) {
     const counted = source ? recordOutcome(source, issue) : false;
     if (issue !== "ok") log("warn", "panda.playback_report", { requestId: c.get("requestId"), type, tmdbId, season: num(body.season), episode: num(body.episode), source, issue, position: num(body.position), counted });
     return c.json({ success: true, data: { received: true, counted } }, 202);
+  });
+
+  /* ---------------- account-free sync (v1.2.3) ---------------- */
+  const clientOf = (c: Context<AppEnv>) => c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "unknown";
+  const syncGate = (c: Context<AppEnv>) => {
+    c.header("cache-control", "no-store");
+    const id = c.req.param("id") ?? "";
+    if (!SYNC_ID.test(id)) return errorResponse(c, "INVALID_REQUEST", "Sync id must be 32 lowercase hex characters.", 400, c.get("requestId"));
+    const blocked = checkClient(clientOf(c));
+    if (blocked) {
+      c.header("retry-after", String(blocked.retryAfter));
+      return errorResponse(c, blocked.reason === "locked" ? "SYNC_LOCKED" : "RATE_LIMITED", blocked.reason === "locked" ? "Too many wrong sync codes. Try again later." : "Too many sync requests. Please retry later.", 429, c.get("requestId"));
+    }
+    return null;
+  };
+  const storeDown = (c: Context<AppEnv>, e: unknown) => {
+    log("warn", "panda.sync_store_failed", { requestId: c.get("requestId"), store: syncStore(), error: e instanceof Error ? e.message : String(e) });
+    return errorResponse(c, "PROVIDER_UNAVAILABLE", "The sync store is not reachable right now.", 503, c.get("requestId"));
+  };
+  const miss = (c: Context<AppEnv>) => {
+    const left = recordMiss(clientOf(c));
+    if (left === 0) c.header("retry-after", String(15 * 60));
+    return c.json({ success: false, error: { code: "SYNC_NOT_FOUND", message: "No backup for this sync code.", requestId: c.get("requestId"), triesLeft: left } }, 404);
+  };
+
+  app.get("/sync/:id", async (c) => {
+    const g = syncGate(c); if (g) return g;
+    try {
+      const rec = await readRecord(c.req.param("id"));
+      if (!rec) return miss(c);
+      clearMisses(clientOf(c));
+      return c.json({ success: true, data: rec });
+    } catch (e) { return storeDown(c, e); }
+  });
+
+  app.put("/sync/:id", async (c) => {
+    const g = syncGate(c); if (g) return g;
+    let body: { blob?: unknown; base?: unknown };
+    try {
+      const raw = await c.req.text();
+      if (raw.length > SYNC_MAX_BYTES + 200) return errorResponse(c, "PAYLOAD_TOO_LARGE", "The backup is larger than 512 KB.", 413, c.get("requestId"));
+      body = JSON.parse(raw) as typeof body;
+    } catch { return errorResponse(c, "INVALID_REQUEST", "Body must be JSON { blob, base }.", 400, c.get("requestId")); }
+    if (!validBlob(body.blob)) return errorResponse(c, "INVALID_REQUEST", "blob must be an encrypted Panda backup envelope.", 400, c.get("requestId"));
+    const base = body.base === null || body.base === undefined ? null : Number(body.base);
+    if (base !== null && (!Number.isInteger(base) || base < 1)) return errorResponse(c, "INVALID_REQUEST", "base must be a positive version or null.", 400, c.get("requestId"));
+    try {
+      if (base !== null && !(await readRecord(c.req.param("id")))) {
+        return errorResponse(c, "SYNC_REVOKED", "This sync code was revoked or replaced.", 410, c.get("requestId"));
+      }
+      const r = await writeRecord(c.req.param("id"), body.blob, base);
+      if (!r.ok) return c.json({ success: false, error: { code: "SYNC_CONFLICT", message: "Another device saved first. Merge and retry.", requestId: c.get("requestId") }, data: r.current }, 409);
+      return c.json({ success: true, data: { version: r.record.version, updatedAt: r.record.updatedAt } });
+    } catch (e) { return storeDown(c, e); }
+  });
+
+  app.delete("/sync/:id", async (c) => {
+    const g = syncGate(c); if (g) return g;
+    try {
+      if (!(await readRecord(c.req.param("id")))) return miss(c);
+      await revokeRecord(c.req.param("id"));
+      return c.json({ success: true, data: { revoked: true } });
+    } catch (e) { return storeDown(c, e); }
   });
 
   app.get("/wall", async (c) => {
