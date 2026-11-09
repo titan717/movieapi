@@ -16,6 +16,7 @@ import { VidyProvider, createPlaybackRoutes } from "./providers/playback/index.j
 import { CanonicalDetailsService } from "./services/canonical-details.js";
 import { createDetailsRoutes } from "./details/routes.js";
 import { PandaService } from "./panda/service.js";
+import { createShareRoutes } from "./panda/share.js";
 import { createPandaRoutes } from "./panda/routes.js";
 
 type AppEnv = { Variables: { requestId: string } };
@@ -308,7 +309,9 @@ export function createApp(config: Config = loadConfig()) {
   app.route("/api/v1/tv", createTvmazeRoutes(tvmaze, tmdb, tmdbVideos, canonicalDetails));
   app.route("/api/v1/tmdb", createTmdbRoutes(tmdb, tvmaze, canonicalDetails));
   app.route("/api/v1/details", createDetailsRoutes(canonicalDetails));
-  app.route("/api/v1/panda", createPandaRoutes(new PandaService(tmdb)));
+  const panda = new PandaService(tmdb);
+  app.route("/api/v1/panda", createPandaRoutes(panda));
+  app.route("/p", createShareRoutes(panda));
   app.route("/api/v1/airing", createTvmazeScheduleRoutes(tvmaze));
   app.route("/api/v1", createDiscoveryRoutes(discovery));
   app.route("/api/v1", createTmdbVideoRoutes(tmdbVideos));
