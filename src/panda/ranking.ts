@@ -34,6 +34,47 @@ export const SOURCE_TIERS: Record<RankedSourceId, { tier: 1 | 2 | 3 | 4; popups:
   vidlink: { tier: 3, popups: 1, navigations: 0, adRequests: 21, sandbox: false, measuredAt: "2026-11-09" }
 };
 
+export type TierInfo = (typeof SOURCE_TIERS)[RankedSourceId];
+export const ADSCORE_URL = "https://raw.githubusercontent.com/titan717/Panda.fun/main/docs/sources/adscore.json";
+const TIER_TTL = 6 * HOUR;
+let tierCache: { at: number; tiers: Record<RankedSourceId, TierInfo> } | null = null;
+
+/**
+ * Merge the weekly measurement (Panda.fun docs/sources/adscore.json → `tiers`) over the built-in
+ * table. A measurement only counts when the source actually played in that run: a source that
+ * merely failed to start is the health probe's job, not a reason to call it ad-heavy (D-137).
+ */
+export function mergeTiers(file: unknown, base: Record<RankedSourceId, TierInfo> = SOURCE_TIERS): Record<RankedSourceId, TierInfo> {
+  const out = { ...base };
+  const f = file as { measuredAt?: unknown; tiers?: Record<string, Record<string, unknown>> } | null;
+  if (!f || typeof f !== "object" || !f.tiers || typeof f.tiers !== "object") return out;
+  const at = typeof f.measuredAt === "string" && /^\d{4}-\d{2}-\d{2}/.test(f.measuredAt) ? f.measuredAt.slice(0, 10) : null;
+  if (!at) return out;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
+  for (const [raw, m] of Object.entries(f.tiers)) {
+    const tier = m?.tier;
+    const played = typeof m?.firstPlay === "number" && m.firstPlay < 99;
+    if (!played || (tier !== 1 && tier !== 2 && tier !== 3 && tier !== 4)) continue;
+    const entry: TierInfo = { tier, popups: num(m.popups) ?? 0, navigations: num(m.navigations) ?? 0, adRequests: num(m.adRequests) ?? 0, sandbox: m.sandbox === true, measuredAt: at };
+    const ids: RankedSourceId[] = raw === "vidy" ? ["vidy", "vidyanime"] : (SOURCE_IDS as readonly string[]).includes(raw) ? [raw as RankedSourceId] : [];
+    for (const id of ids) out[id] = entry;
+  }
+  return out;
+}
+
+/** Current tiers: the weekly measurement when reachable (cached 6 h), else the built-in table. */
+export async function measuredTiers(fetcher: typeof fetch = fetch, now = Date.now()): Promise<Record<RankedSourceId, TierInfo>> {
+  if (tierCache && now - tierCache.at < TIER_TTL) return tierCache.tiers;
+  let tiers = SOURCE_TIERS;
+  try {
+    const r = await fetcher(ADSCORE_URL, { signal: AbortSignal.timeout(2500) });
+    if (r.ok) tiers = mergeTiers(await r.json());
+  } catch { /* keep the built-in table */ }
+  tierCache = { at: now, tiers };
+  return tiers;
+}
+export function resetTierCache() { tierCache = null; }
+
 type Bucket = { ok: number; bad: number };
 /** source → hour index → counts */
 const mem = new Map<string, Map<number, Bucket>>();
@@ -78,7 +119,7 @@ export type RankEntry = {
 
 const PRIOR: Record<Health["state"], Bucket> = { healthy: { ok: 2, bad: 0 }, degraded: { ok: 1, bad: 1 }, down: { ok: 0, bad: 3 } };
 
-export function rank(buckets: Map<string, Map<number, Bucket>>, health: Health[], now = Date.now()): RankEntry[] {
+export function rank(buckets: Map<string, Map<number, Bucket>>, health: Health[], now = Date.now(), tiers: Record<RankedSourceId, TierInfo> = SOURCE_TIERS): RankEntry[] {
   const h0 = Math.floor(now / HOUR);
   const out = SOURCE_IDS.map((id) => {
     let ok = 0, bad = 0, plays = 0, reports = 0, reports24h = 0;
@@ -99,8 +140,8 @@ export function rank(buckets: Map<string, Map<number, Bucket>>, health: Health[]
       score: Math.round(wilson(ok + prior.ok, n) * 1000) / 1000,
       reliability: observed >= 1 ? Math.round((ok / observed) * 100) / 100 : null,
       plays, reports, reports24h, state,
-      tier: SOURCE_TIERS[id].tier,
-      ads: (({ tier: _t, ...ads }) => ads)(SOURCE_TIERS[id])
+      tier: tiers[id].tier,
+      ads: (({ tier: _t, ...ads }) => ads)(tiers[id])
     };
   });
   // a source that is down right now goes last; otherwise a cleaner ad tier always wins; the community score reorders only inside a tier, and ties keep

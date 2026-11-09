@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
 import type { Config } from "../src/config.js";
-import { decay, rank, recordOutcome, resetRanking, wilson } from "../src/panda/ranking.js";
+import { decay, mergeTiers, measuredTiers, rank, recordOutcome, resetRanking, resetTierCache, SOURCE_TIERS, wilson } from "../src/panda/ranking.js";
 import { baseTitle, currentSeason, isAnime, pickCandidate } from "../src/panda/anilist.js";
 import { playbackSources } from "../src/panda/service.js";
 
@@ -13,7 +13,7 @@ const base: Config = {
   corsOrigin: "*", port: 3000
 };
 const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
-beforeEach(() => resetRanking());
+beforeEach(() => { resetRanking(); resetTierCache(); });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Wilson ranking", () => {
@@ -149,5 +149,36 @@ describe("AniList bridge", () => {
     expect(body.data.rows.map((r: any) => r.id)).toEqual(["trending", "season", "popular", "upcoming"]);
     expect(body.data.rows[0].items[0]).toMatchObject({ id: "tv:101", anilistId: 1, score: 8.5, studio: "MAPPA", airing: { episode: 6 } });
     expect(body.data.hero.id).toBe("tv:101");
+  });
+});
+
+describe("weekly ad tiers", () => {
+  const file = { measuredAt: "2026-11-16T03:00:00.000Z", tiers: {
+    cinesrc: { tier: 1, popups: 0, navigations: 0, adRequests: 2, sandbox: true, firstPlay: 2.9 },
+    vidy: { tier: 3, popups: 1, navigations: 0, adRequests: 5, sandbox: false, firstPlay: 1.5 },
+    vidlink: { tier: 4, popups: 0, navigations: 0, adRequests: 0, sandbox: false, firstPlay: 99 },
+    evil: { tier: 1, firstPlay: 1 }
+  } };
+  it("applies a measurement only for sources that played", () => {
+    const t = mergeTiers(file);
+    expect(t.cinesrc).toMatchObject({ tier: 1, adRequests: 2, measuredAt: "2026-11-16" });
+    expect(t.vidy.tier).toBe(3);
+    expect(t.vidyanime.tier).toBe(3);
+    expect(t.vidlink).toEqual(SOURCE_TIERS.vidlink);
+    expect(Object.keys(t)).not.toContain("evil");
+  });
+  it("ignores malformed files", () => {
+    expect(mergeTiers(null)).toEqual(SOURCE_TIERS);
+    expect(mergeTiers({ tiers: { vidy: { tier: 9, firstPlay: 1 } }, measuredAt: "2026-11-16" })).toEqual(SOURCE_TIERS);
+    expect(mergeTiers({ tiers: file.tiers })).toEqual(SOURCE_TIERS);
+  });
+  it("re-ranks by the measured tier and falls back when GitHub is unreachable", async () => {
+    const tiers = await measuredTiers((async () => json(file)) as unknown as typeof fetch, 1);
+    const r = rank(new Map(), [], Date.now(), tiers);
+    expect(r.map((x) => x.id)).toEqual(["cinesrc", "vidy", "vidyanime", "vidlink"]);
+    expect(r[1].tier).toBe(3);
+    resetTierCache();
+    const off = await measuredTiers((async () => { throw new Error("offline"); }) as unknown as typeof fetch, 1);
+    expect(off).toEqual(SOURCE_TIERS);
   });
 });

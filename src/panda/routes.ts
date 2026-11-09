@@ -5,7 +5,7 @@ import { log } from "../logger.js";
 import { TmdbProviderError } from "../providers/tmdb/client.js";
 import { mirrorRelease, isReleaseTag } from "./releases.js";
 import { searchSubtitles, subtitleFile, parseLangs } from "./subtitles.js";
-import { buckets, rank, recordOutcome, kvConfigured } from "./ranking.js";
+import { buckets, rank, recordOutcome, kvConfigured, measuredTiers } from "./ranking.js";
 import { SYNC_ID, SYNC_MAX_BYTES, checkClient, clearMisses, readRecord, recordMiss, revokeRecord, syncStore, validBlob, writeRecord } from "./sync.js";
 import { PandaService, playbackSources, sourceHealth, skipSegments, isImdbId, parseCalendarIds, CALENDAR_MAX, PANDA_PAGE_KINDS, type MediaType, type PandaPageKind } from "./service.js";
 
@@ -282,9 +282,9 @@ export function createPandaRoutes(service: PandaService) {
 
   /** Community ranking: Wilson lower bound over time-decayed play outcomes + live health prior. */
   app.get("/sources/ranking", async (c) => {
-    const [health, b] = await Promise.all([sourceHealth().catch(() => []), buckets()]);
+    const [health, b, tiers] = await Promise.all([sourceHealth().catch(() => []), buckets(), measuredTiers()]);
     c.header("cache-control", "public, max-age=60, stale-while-revalidate=600");
-    return c.json({ success: true, data: { sources: rank(b, health), halfLifeHours: 72, shared: kvConfigured(), updatedAt: new Date().toISOString() } });
+    return c.json({ success: true, data: { sources: rank(b, health, Date.now(), tiers), halfLifeHours: 72, shared: kvConfigured(), updatedAt: new Date().toISOString() } });
   });
 
   app.get("/anime", async (c) => {
