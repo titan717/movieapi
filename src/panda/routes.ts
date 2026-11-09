@@ -129,7 +129,7 @@ export function createPandaRoutes(service: PandaService) {
   };
   const storeDown = (c: Context<AppEnv>, e: unknown) => {
     log("warn", "panda.sync_store_failed", { requestId: c.get("requestId"), store: syncStore(), error: e instanceof Error ? e.message : String(e) });
-    return errorResponse(c, "PROVIDER_UNAVAILABLE", "The sync store is not reachable right now.", 503, c.get("requestId"));
+    return errorResponse(c, "PROVIDER_UNAVAILABLE", `The sync store is not reachable right now (${e instanceof Error ? e.message.slice(0, 60) : "error"}).`, 503, c.get("requestId"));
   };
   const miss = (c: Context<AppEnv>) => {
     const left = recordMiss(clientOf(c));
