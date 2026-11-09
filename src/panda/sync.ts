@@ -101,7 +101,7 @@ export async function readRecord(id: string): Promise<SyncRecord | null> {
     if (!res.ok) throw new Error(`store ${res.status}`);
     return parseRecord(((await res.json()) as { result: string | null }).result);
   }
-  const res = await fetchImpl(TEXTDB + name, { headers: { accept: "text/plain" }, signal: AbortSignal.timeout(8000) });
+  const res = await fetchImpl(TEXTDB + name, { headers: { accept: "*/*" }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`store ${res.status}`);
   return parseRecord(await res.text());
 }
